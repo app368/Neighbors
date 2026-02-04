@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2797A4882F32D01A002C3120 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 2797A4872F32D01A002C3120 /* FirebaseAuth */; };
+		2797A48A2F32D01A002C3120 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 2797A4892F32D01A002C3120 /* FirebaseFirestore */; };
+		2797A48D2F32D2BB002C3120 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 2797A48C2F32D2BB002C3120 /* FirebaseMessaging */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		2797A3672F32B187002C3120 /* Neighbors.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Neighbors.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +42,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2797A48D2F32D2BB002C3120 /* FirebaseMessaging in Frameworks */,
+				2797A4882F32D01A002C3120 /* FirebaseAuth in Frameworks */,
+				2797A48A2F32D01A002C3120 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -46,6 +55,7 @@
 			isa = PBXGroup;
 			children = (
 				2797A3692F32B187002C3120 /* Neighbors */,
+				2797A48B2F32D2BB002C3120 /* Frameworks */,
 				2797A3682F32B187002C3120 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -56,6 +66,13 @@
 				2797A3672F32B187002C3120 /* Neighbors.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		2797A48B2F32D2BB002C3120 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -78,6 +95,9 @@
 			);
 			name = Neighbors;
 			packageProductDependencies = (
+				2797A4872F32D01A002C3120 /* FirebaseAuth */,
+				2797A4892F32D01A002C3120 /* FirebaseFirestore */,
+				2797A48C2F32D2BB002C3120 /* FirebaseMessaging */,
 			);
 			productName = Neighbors;
 			productReference = 2797A3672F32B187002C3120 /* Neighbors.app */;
@@ -107,6 +127,9 @@
 			);
 			mainGroup = 2797A35E2F32B186002C3120;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2797A4862F32D01A002C3120 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2797A3682F32B187002C3120 /* Products */;
 			projectDirPath = "";
@@ -355,6 +378,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2797A4862F32D01A002C3120 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2797A4872F32D01A002C3120 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2797A4862F32D01A002C3120 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		2797A4892F32D01A002C3120 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2797A4862F32D01A002C3120 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		2797A48C2F32D2BB002C3120 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2797A4862F32D01A002C3120 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2797A35F2F32B186002C3120 /* Project object */;
 }
