@@ -132,14 +132,23 @@ class FeedViewController: UIViewController {
         }
     }
     
+    
     @objc private func createPostTapped() {
-        // TODO: Переход на экран создания поста (суб-процесс C)
-        let alert = UIAlertController(title: "Create Post",
-                                     message: "Post creation will be implemented in the next step",
-                                     preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
-    }
+            // Создаём экран создания поста
+            let createPostVC = CreatePostViewController()
+            
+            // Устанавливаем callback для обновления ленты после создания поста
+            createPostVC.onPostCreated = { [weak self] in
+                self?.viewModel.loadPosts()
+            }
+            
+            // Оборачиваем в NavigationController для показа navigation bar
+            let navigationController = UINavigationController(rootViewController: createPostVC)
+            
+            // Показываем модально
+            present(navigationController, animated: true)
+        }
+    
     
     @objc private func logoutTapped() {
         let alert = UIAlertController(title: "Logout",
