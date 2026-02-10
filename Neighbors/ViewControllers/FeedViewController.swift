@@ -243,15 +243,19 @@ extension FeedViewController: UITableViewDataSource {
 extension FeedViewController: UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        
-        // TODO: Переход к детальному посту (суб-процесс D)
-        guard let post = viewModel.post(at: indexPath.row) else { return }
-        
-        let alert = UIAlertController(title: post.title,
-                                     message: "Post detail view will be implemented in the next step",
-                                     preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
-    }
+            tableView.deselectRow(at: indexPath, animated: true)
+            
+            guard let post = viewModel.post(at: indexPath.row) else { return }
+            
+            // Создаём экран детального поста
+            let detailVC = PostDetailViewController(post: post)
+            
+            // Устанавливаем callback для обновления ленты при удалении поста
+            detailVC.onPostDeleted = { [weak self] in
+                self?.viewModel.loadPosts()
+            }
+            
+            // Открываем экран
+            navigationController?.pushViewController(detailVC, animated: true)
+        }
 }
