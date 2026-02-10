@@ -55,21 +55,38 @@ class PostDetailViewModel {
     // MARK: - User Management
     
     /// Загрузка данных текущего пользователя
-    private func loadCurrentUser() {
-        guard let uid = authService.currentUser?.uid else { return }
-        
-        userService.fetchUser(uid: uid) { [weak self] result in
-            if case .success(let user) = result {
-                self?.currentUser = user
+    /// Загрузка данных текущего пользователя
+        func loadCurrentUser(completion: (() -> Void)? = nil) {
+            guard let uid = authService.currentUser?.uid else {
+                completion?()
+                return
+            }
+            
+            userService.fetchUser(uid: uid) { [weak self] result in
+                if case .success(let user) = result {
+                    self?.currentUser = user
+                }
+                completion?()
             }
         }
-    }
     
     /// Проверка прав доступа (автор поста или админ)
     func canManagePost() -> Bool {
-        guard let currentUser = currentUser else { return false }
-        return currentUser.uid == post.authorId || currentUser.isAdmin
-    }
+            print("DEBUG canManagePost:")
+            print("  currentUser: \(String(describing: currentUser))")
+            print("  currentUser.uid: \(currentUser?.uid ?? "nil")")
+            print("  post.authorId: \(post.authorId)")
+            print("  isAdmin: \(currentUser?.isAdmin ?? false)")
+            
+            guard let currentUser = currentUser else {
+                print("  Result: false (no currentUser)")
+                return false
+            }
+            
+            let result = currentUser.uid == post.authorId || currentUser.isAdmin
+            print("  Result: \(result)")
+            return result
+        }
     
     /// Проверка прав на удаление/редактирование комментария
     /// - Parameter comment: Комментарий для проверки

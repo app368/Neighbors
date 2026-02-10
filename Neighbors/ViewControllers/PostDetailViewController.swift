@@ -138,16 +138,22 @@ class PostDetailViewController: UIViewController {
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
-        super.viewDidLoad()
-        setupUI()
-        setupTableView()
-        setupBindings()
-        setupNavigationBar()
-        configurePostHeader()
-        
-        // Загрузка комментариев
-        viewModel.loadComments()
-    }
+            super.viewDidLoad()
+            setupUI()
+            setupTableView()
+            setupBindings()
+            configurePostHeader()
+            
+            // Загрузка текущего пользователя, затем настройка navigation bar
+            viewModel.loadCurrentUser { [weak self] in
+                DispatchQueue.main.async {
+                    self?.setupNavigationBar()
+                }
+            }
+            
+            // Загрузка комментариев
+            viewModel.loadComments()
+        }
     
     // MARK: - Setup
     
