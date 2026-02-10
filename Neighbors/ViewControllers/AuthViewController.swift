@@ -317,12 +317,37 @@ class AuthViewController: UIViewController {
     }
     
     private func navigateToMainApp() {
-        // TODO: Позже заменим на переход к ленте постов
-        // Пока просто показываем заглушку
-        let alert = UIAlertController(title: "Успешно!",
-                                     message: "Вы успешно вошли в систему",
-                                     preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        // Создаём NavigationController с FeedViewController
+        let feedVC = FeedViewController()
+        let navigationController = UINavigationController(rootViewController: feedVC)
+        
+        // Меняем rootViewController окна
+        if let window = view.window {
+            window.rootViewController = navigationController
+            
+            // Анимация перехода (опционально)
+            UIView.transition(with: window,
+                              duration: 0.3,
+                              options: .transitionCrossDissolve,
+                              animations: nil,
+                              completion: nil)
+        }
     }
+    
 }
+    
+    
+    
+    
+    
+ // MARK: - Old
+//    private func navigateToMainApp() {
+//        // TODO: Позже заменим на переход к ленте постов
+//        // Пока просто показываем заглушку
+//        let alert = UIAlertController(title: "Успешно!",
+//                                     message: "Вы успешно вошли в систему",
+//                                     preferredStyle: .alert)
+//        alert.addAction(UIAlertAction(title: "OK", style: .default))
+//        present(alert, animated: true)
+//    }
+
