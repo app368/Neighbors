@@ -102,6 +102,21 @@ class PostDetailViewController: UIViewController {
         return tableView
     }()
     
+    private let emptyCommentsLabel: UILabel = {
+        let label = UILabel()
+        label.text = "No comments yet.\nBe the first to comment!"
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.font = UIFont.systemFont(ofSize: 15)
+        label.textColor = .secondaryLabel
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.isHidden = true
+        return label
+    }()
+    
+    
+    
+    
     private var tableViewHeightConstraint: NSLayoutConstraint!
     
     private let commentInputView: CommentInputView = {
@@ -178,6 +193,8 @@ class PostDetailViewController: UIViewController {
         contentStackView.addArrangedSubview(postHeaderView)
         contentStackView.addArrangedSubview(separatorView)
         contentStackView.addArrangedSubview(commentsTableView)
+        contentStackView.addArrangedSubview(commentsTableView)
+        contentStackView.addArrangedSubview(emptyCommentsLabel)
         
         view.addSubview(commentInputView)
         view.addSubview(activityIndicator)
@@ -232,6 +249,10 @@ class PostDetailViewController: UIViewController {
             
             // Comments TableView
             tableViewHeightConstraint,
+            
+            // Empty Comments Label
+            emptyCommentsLabel.heightAnchor.constraint(equalToConstant: 80),
+            
             
             // Comment Input
             commentInputView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -315,7 +336,14 @@ class PostDetailViewController: UIViewController {
     private func updateTableViewHeight() {
         commentsTableView.layoutIfNeeded()
         tableViewHeightConstraint.constant = commentsTableView.contentSize.height
+        
+        // Показать/скрыть пустое состояние
+        let hasComments = viewModel.numberOfComments > 0
+        commentsTableView.isHidden = !hasComments
+        emptyCommentsLabel.isHidden = hasComments
     }
+    
+    
     
     // MARK: - Actions
     
