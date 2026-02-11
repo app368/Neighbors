@@ -297,9 +297,14 @@ class PostDetailViewController: UIViewController {
     }
     
     private func updatePostCounts(_ post: Post) {
-        likeCountLabel.text = "\(post.likesCount)"
-        commentCountLabel.text = "💬 \(post.commentsCount)"
-    }
+            likeCountLabel.text = "\(post.likesCount)"
+            commentCountLabel.text = "💬 \(post.commentsCount)"
+            
+            // Уведомляем FeedViewController об изменении счётчиков
+            onPostUpdated?(post)
+        }
+    
+    
     
     private func updatePostLikeButton() {
         let isLiked = viewModel.isLiked(targetId: viewModel.post.id)
