@@ -6,8 +6,8 @@ import FirebaseFirestore
 /// Модель поста в ленте
 struct Post {
     let id: String
-    let title: String
-    let content: String
+    var title: String
+    var content: String
     let authorId: String
     let authorNickname: String
     let images: [String]
@@ -15,7 +15,7 @@ struct Post {
     var likesCount: Int
     var commentsCount: Int
     let createdAt: Date
-    let updatedAt: Date
+    var updatedAt: Date
     
     /// Инициализация из словаря Firestore
     init?(dictionary: [String: Any], id: String) {

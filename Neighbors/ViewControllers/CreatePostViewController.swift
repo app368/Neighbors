@@ -80,6 +80,12 @@ class CreatePostViewController: UIViewController {
     /// Callback для обновления ленты после создания поста
     var onPostCreated: (() -> Void)?
     
+    /// Пост для редактирования (если nil - режим создания)
+    private var postToEdit: Post?
+    
+    /// Callback для обновления поста после редактирования
+    var onPostUpdated: ((Post) -> Void)?
+    
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
@@ -88,6 +94,14 @@ class CreatePostViewController: UIViewController {
         setupBindings()
         setupNavigationBar()
         setupTextFields()
+        
+        // Если редактируем пост - заполняем поля
+        if let post = postToEdit {
+            titleTextField.text = post.title
+            contentTextView.text = post.content
+            titleTextChanged() // Обновить счётчик символов
+            textViewDidChange(contentTextView) // Скрыть placeholder
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -156,16 +170,20 @@ class CreatePostViewController: UIViewController {
     }
     
     private func setupNavigationBar() {
-        title = "New Post"
-        
-        // Кнопка Cancel
-        let cancelButton = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelTapped))
-        navigationItem.leftBarButtonItem = cancelButton
-        
-        // Кнопка Publish
-        let publishButton = UIBarButtonItem(title: "Publish", style: .done, target: self, action: #selector(publishTapped))
-        navigationItem.rightBarButtonItem = publishButton
-    }
+            // Заголовок меняется в зависимости от режима
+            title = postToEdit != nil ? "Edit Post" : "New Post"
+            
+            // Кнопка Cancel
+            let cancelButton = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelTapped))
+            navigationItem.leftBarButtonItem = cancelButton
+            
+            // Кнопка Publish/Save
+            let saveButtonTitle = postToEdit != nil ? "Save" : "Publish"
+            let publishButton = UIBarButtonItem(title: saveButtonTitle, style: .prominent, target: self, action: #selector(publishTapped))
+            navigationItem.rightBarButtonItem = publishButton
+        }
+    
+    
     
     private func setupTextFields() {
         titleTextField.addTarget(self, action: #selector(titleTextChanged), for: .editingChanged)
@@ -220,8 +238,72 @@ class CreatePostViewController: UIViewController {
         let title = titleTextField.text ?? ""
         let content = contentTextView.text ?? ""
         
-        viewModel.createPost(title: title, content: content)
+        if let post = postToEdit {
+            // Режим редактирования
+            updatePost(post, title: title, content: content)
+        } else {
+            // Режим создания
+            viewModel.createPost(title: title, content: content)
+        }
     }
+    
+    private func updatePost(_ post: Post, title: String, content: String) {
+            // Валидация заголовка
+            if let titleError = viewModel.validateTitle(title) {
+                titleErrorLabel.text = titleError
+                titleErrorLabel.isHidden = false
+                return
+            }
+            
+            // Валидация контента
+            if let contentError = viewModel.validateContent(content) {
+                contentErrorLabel.text = contentError
+                contentErrorLabel.isHidden = false
+                return
+            }
+            
+            navigationItem.rightBarButtonItem?.isEnabled = false
+            activityIndicator.startAnimating()
+            dismissKeyboard()
+            
+            // Обновляем пост в Firestore
+            FirestorePostService.shared.updatePost(
+                postId: post.id,
+                fields: ["title": title, "content": content]
+            ) { [weak self] result in
+                DispatchQueue.main.async {
+                    self?.navigationItem.rightBarButtonItem?.isEnabled = true
+                    self?.activityIndicator.stopAnimating()
+                    
+                    switch result {
+                    case .success:
+                        // Создаём обновлённый объект Post
+                        var updatedPost = post
+                        updatedPost.title = title
+                        updatedPost.content = content
+                        updatedPost.updatedAt = Date()
+                        
+                        // Вызываем callback
+                        self?.onPostUpdated?(updatedPost)
+                        
+                        // Закрываем экран
+                        self?.dismiss(animated: true)
+                        
+                    case .failure(let error):
+                        let alert = UIAlertController(
+                            title: "Error",
+                            message: "Failed to update post: \(error.localizedDescription)",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(alert, animated: true)
+                    }
+                }
+            }
+        }
+    
+    
+    
     
     @objc private func dismissKeyboard() {
         view.endEditing(true)
@@ -277,6 +359,16 @@ class CreatePostViewController: UIViewController {
         titleErrorLabel.isHidden = true
         contentErrorLabel.isHidden = true
     }
+    
+    
+    // MARK: - Public Methods
+        
+        /// Установить пост для редактирования
+        /// - Parameter post: Пост который нужно отредактировать
+        func setPostToEdit(_ post: Post) {
+            self.postToEdit = post
+        }
+    
 }
 
 // MARK: - UITextViewDelegate

@@ -255,6 +255,12 @@ extension FeedViewController: UITableViewDelegate {
                 self?.viewModel.loadPosts()
             }
             
+            // Устанавливаем callback для обновления поста при редактировании
+            detailVC.onPostUpdated = { [weak self] updatedPost in
+                // Обновляем пост в FeedViewModel
+                self?.viewModel.updatePost(updatedPost)
+            }
+            
             // Открываем экран
             navigationController?.pushViewController(detailVC, animated: true)
         }

@@ -124,6 +124,9 @@ class PostDetailViewController: UIViewController {
     /// Callback для обновления ленты постов при удалении поста
     var onPostDeleted: (() -> Void)?
     
+    /// Callback для обновления поста в ленте при редактировании
+    var onPostUpdated: ((Post) -> Void)?
+    
     // MARK: - Initialization
     
     init(post: Post) {
@@ -324,6 +327,12 @@ class PostDetailViewController: UIViewController {
     @objc private func menuButtonTapped() {
         let alert = UIAlertController(title: "Post Options", message: nil, preferredStyle: .actionSheet)
         
+        // Опция Edit (только для автора или админа)
+        alert.addAction(UIAlertAction(title: "Edit Post", style: .default) { [weak self] _ in
+            self?.editPost()
+        })
+        
+        // Опция Delete
         alert.addAction(UIAlertAction(title: "Delete Post", style: .destructive) { [weak self] _ in
             self?.confirmDeletePost()
         })
@@ -332,6 +341,33 @@ class PostDetailViewController: UIViewController {
         
         present(alert, animated: true)
     }
+    
+    private func editPost() {
+            // Создаём экран редактирования поста
+            let createPostVC = CreatePostViewController()
+            createPostVC.setPostToEdit(viewModel.post)
+            
+            // Устанавливаем callback для обновления после редактирования
+            createPostVC.onPostUpdated = { [weak self] updatedPost in
+                guard let self = self else { return }
+                
+                // Обновляем локальный пост
+                self.viewModel.post = updatedPost
+                self.configurePostHeader()
+                
+                // Уведомляем FeedViewController об изменениях
+                self.onPostUpdated?(updatedPost)
+            }
+            
+            // Оборачиваем в NavigationController
+            let navigationController = UINavigationController(rootViewController: createPostVC)
+            
+            // Показываем модально
+            present(navigationController, animated: true)
+        }
+    
+    
+    
     
     private func confirmDeletePost() {
         let alert = UIAlertController(

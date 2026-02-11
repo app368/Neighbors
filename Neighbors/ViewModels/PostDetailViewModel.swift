@@ -31,7 +31,7 @@ class PostDetailViewModel {
     private let authService = FirebaseAuthService.shared
     private let userService = FirestoreUserService.shared
     
-    private(set) var post: Post
+    var post: Post
     private(set) var comments: [Comment] = []
     private(set) var state: PostDetailState = .idle {
         didSet {
