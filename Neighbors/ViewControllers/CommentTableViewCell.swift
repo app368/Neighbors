@@ -11,6 +11,13 @@ class CommentTableViewCell: UITableViewCell {
     
     // MARK: - UI Elements
     
+    private let avatarView: AvatarView = {
+        let view = AvatarView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+        
+    
     private let authorLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
@@ -68,6 +75,7 @@ class CommentTableViewCell: UITableViewCell {
     // MARK: - Setup
     
     private func setupUI() {
+        contentView.addSubview(avatarView)
         contentView.addSubview(authorLabel)
         contentView.addSubview(dateLabel)
         contentView.addSubview(contentLabel)
@@ -77,23 +85,32 @@ class CommentTableViewCell: UITableViewCell {
         likeButton.addTarget(self, action: #selector(likeButtonTapped), for: .touchUpInside)
         
         NSLayoutConstraint.activate([
-            // Author
+            
+            // Avatar
+            avatarView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            avatarView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            avatarView.widthAnchor.constraint(equalToConstant: 32),
+            avatarView.heightAnchor.constraint(equalToConstant: 32),
+            
+            // Author (Сдвигаем вправо от аватара)
             authorLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            authorLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            authorLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 8),
             
             // Date
             dateLabel.centerYAnchor.constraint(equalTo: authorLabel.centerYAnchor),
             dateLabel.leadingAnchor.constraint(equalTo: authorLabel.trailingAnchor, constant: 8),
             dateLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
             
-            // Content
+            // Content (сдвигаем вниз и выравниваем с аватаром)
             contentLabel.topAnchor.constraint(equalTo: authorLabel.bottomAnchor, constant: 6),
-            contentLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            contentLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 8),
             contentLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             
             // Like Button
             likeButton.topAnchor.constraint(equalTo: contentLabel.bottomAnchor, constant: 8),
-            likeButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            likeButton.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 8),
+            
+            
             likeButton.widthAnchor.constraint(equalToConstant: 24),
             likeButton.heightAnchor.constraint(equalToConstant: 24),
             likeButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
@@ -111,6 +128,7 @@ class CommentTableViewCell: UITableViewCell {
     ///   - comment: Модель комментария
     ///   - isLiked: Залайкан ли комментарий текущим пользователем
     func configure(with comment: Comment, isLiked: Bool) {
+        avatarView.configure(with: comment.authorNickname, fontSize: 14)
         authorLabel.text = comment.authorNickname
         dateLabel.text = comment.formattedDate()
         contentLabel.text = comment.content
@@ -132,16 +150,5 @@ class CommentTableViewCell: UITableViewCell {
     @objc private func likeButtonTapped() {
         onLikeTapped?()
     }
-    
-    // MARK: - Reuse
-    
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        authorLabel.text = nil
-        dateLabel.text = nil
-        contentLabel.text = nil
-        likeCountLabel.text = nil
-        onLikeTapped = nil
-        updateLikeButton(isLiked: false)
-    }
+
 }

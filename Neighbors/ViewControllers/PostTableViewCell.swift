@@ -11,6 +11,12 @@ class PostTableViewCell: UITableViewCell {
     
     // MARK: - UI Elements
     
+    private let avatarView: AvatarView = {
+        let view = AvatarView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
@@ -82,6 +88,7 @@ class PostTableViewCell: UITableViewCell {
     // MARK: - Setup
     
     private func setupUI() {
+        contentView.addSubview(avatarView)
         contentView.addSubview(titleLabel)
         contentView.addSubview(authorLabel)
         contentView.addSubview(dateLabel)
@@ -92,14 +99,21 @@ class PostTableViewCell: UITableViewCell {
         statsStackView.addArrangedSubview(commentsLabel)
         
         NSLayoutConstraint.activate([
-            // Title
-            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            
+            // Avatar
+            avatarView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            avatarView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            avatarView.widthAnchor.constraint(equalToConstant: 40),
+            avatarView.heightAnchor.constraint(equalToConstant: 40),
+            
+            // Title (Теперь сдвигаем вправо от аватара)
+            titleLabel.topAnchor.constraint(equalTo: avatarView.topAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
             titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             
             // Author
             authorLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6),
-            authorLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            authorLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
             
             // Date
             dateLabel.centerYAnchor.constraint(equalTo: authorLabel.centerYAnchor),
@@ -122,6 +136,7 @@ class PostTableViewCell: UITableViewCell {
     /// Настройка ячейки данными поста
     /// - Parameter post: Модель поста
     func configure(with post: Post) {
+        avatarView.configure(with: post.authorNickname, fontSize: 18)
         titleLabel.text = post.title
         authorLabel.text = post.authorNickname
         dateLabel.text = post.formattedDate()
@@ -129,16 +144,5 @@ class PostTableViewCell: UITableViewCell {
         likesLabel.text = "❤️ \(post.likesCount)"
         commentsLabel.text = "💬 \(post.commentsCount)"
     }
-    
-    // MARK: - Reuse
-    
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        titleLabel.text = nil
-        authorLabel.text = nil
-        dateLabel.text = nil
-        contentPreviewLabel.text = nil
-        likesLabel.text = nil
-        commentsLabel.text = nil
-    }
+
 }

@@ -28,6 +28,13 @@ class PostDetailViewController: UIViewController {
         return view
     }()
     
+    private let avatarView: AvatarView = {
+        let view = AvatarView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 24, weight: .bold)
@@ -182,6 +189,7 @@ class PostDetailViewController: UIViewController {
         scrollView.addSubview(contentStackView)
         
         // Post header
+        postHeaderView.addSubview(avatarView)
         postHeaderView.addSubview(titleLabel)
         postHeaderView.addSubview(authorLabel)
         postHeaderView.addSubview(dateLabel)
@@ -218,12 +226,20 @@ class PostDetailViewController: UIViewController {
             contentStackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
             // Post Header Elements
+            
+            // Avatar
+            avatarView.topAnchor.constraint(equalTo: postHeaderView.topAnchor, constant: 16),
+            avatarView.leadingAnchor.constraint(equalTo: postHeaderView.leadingAnchor, constant: 16),
+            avatarView.widthAnchor.constraint(equalToConstant: 48),
+            avatarView.heightAnchor.constraint(equalToConstant: 48),
+            
+            // Title (сдвигаем вправо и выравниваем с аватаром)
             titleLabel.topAnchor.constraint(equalTo: postHeaderView.topAnchor, constant: 16),
-            titleLabel.leadingAnchor.constraint(equalTo: postHeaderView.leadingAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
             titleLabel.trailingAnchor.constraint(equalTo: postHeaderView.trailingAnchor, constant: -16),
             
             authorLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
-            authorLabel.leadingAnchor.constraint(equalTo: postHeaderView.leadingAnchor, constant: 16),
+            authorLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
             
             dateLabel.centerYAnchor.constraint(equalTo: authorLabel.centerYAnchor),
             dateLabel.leadingAnchor.constraint(equalTo: authorLabel.trailingAnchor, constant: 8),
@@ -309,6 +325,7 @@ class PostDetailViewController: UIViewController {
     
     private func configurePostHeader() {
         let post = viewModel.post
+        avatarView.configure(with: post.authorNickname, fontSize: 20)
         titleLabel.text = post.title
         authorLabel.text = post.authorNickname
         dateLabel.text = post.formattedDate()
