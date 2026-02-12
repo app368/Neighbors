@@ -148,6 +148,13 @@ class CommentTableViewCell: UITableViewCell {
     // MARK: - Actions
     
     @objc private func likeButtonTapped() {
+        // Анимируем кнопку (определяем состояние по изображению)
+        if likeButton.currentImage == UIImage(systemName: "heart.fill") {
+            likeButton.animateUnlike()
+        } else {
+            likeButton.animateLike()
+        }
+        
         onLikeTapped?()
     }
 

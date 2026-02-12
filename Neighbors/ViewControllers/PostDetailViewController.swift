@@ -364,7 +364,18 @@ class PostDetailViewController: UIViewController {
     
     // MARK: - Actions
     
+    
     @objc private func postLikeButtonTapped() {
+        // Определяем лайкнуто ли сейчас
+        let wasLiked = viewModel.isLiked(targetId: viewModel.post.id)
+        
+        // Анимируем кнопку
+        if wasLiked {
+            likeButton.animateUnlike()
+        } else {
+            likeButton.animateLike()
+        }
+        
         viewModel.toggleLike(targetId: viewModel.post.id, targetType: .post) { [weak self] result in
             DispatchQueue.main.async {
                 if case .success = result {
@@ -373,6 +384,9 @@ class PostDetailViewController: UIViewController {
             }
         }
     }
+        // ========== КОНЕЦ ==========
+    
+    
     
     @objc private func menuButtonTapped() {
         let alert = UIAlertController(title: "Post Options", message: nil, preferredStyle: .actionSheet)
