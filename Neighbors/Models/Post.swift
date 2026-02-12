@@ -93,12 +93,8 @@ struct Post {
         return String(content[..<index]) + "..."
     }
     
-    /// Форматированная дата создания
+    /// Форматированная дата создания (относительное время)
     func formattedDate() -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: "en_US")
-        return formatter.string(from: createdAt)
+        return createdAt.relativeTimeString()
     }
 }
