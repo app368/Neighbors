@@ -1,6 +1,7 @@
 // ViewControllers/CreatePostViewController.swift
 
 import UIKit
+import FirebaseAuth
 
 /// Экран создания нового поста
 class CreatePostViewController: UIViewController {
@@ -66,6 +67,33 @@ class CreatePostViewController: UIViewController {
         return label
     }()
     
+    // ========== ПОСЛЕ contentErrorLabel ==========
+        
+    private let addPhotosButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("📷 Add Photos (0/3)", for: .normal)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        button.contentHorizontalAlignment = .left
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+    private let photosCollectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.itemSize = CGSize(width: 100, height: 100)
+        layout.minimumLineSpacing = 8
+        
+        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView.backgroundColor = .clear
+        collectionView.showsHorizontalScrollIndicator = false
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        return collectionView
+    }()
+    
+    // ========== КОНЕЦ ==========
+    
+    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .medium)
         indicator.hidesWhenStopped = true
@@ -85,6 +113,23 @@ class CreatePostViewController: UIViewController {
     
     /// Callback для обновления поста после редактирования
     var onPostUpdated: ((Post) -> Void)?
+    
+    // ========== ПОСЛЕ onPostUpdated ==========
+        
+    /// Выбранные изображения
+    private var selectedImages: [UIImage] = [] {
+        didSet {
+            updatePhotosButton()
+            photosCollectionView.reloadData()
+        }
+    }
+    
+    private let maxImages = 3
+    
+    // ========== КОНЕЦ ==========
+    
+    
+    
     
     // MARK: - Lifecycle
     
@@ -121,6 +166,8 @@ class CreatePostViewController: UIViewController {
         view.addSubview(contentTextView)
         view.addSubview(contentPlaceholderLabel)
         view.addSubview(contentErrorLabel)
+        view.addSubview(addPhotosButton)
+        view.addSubview(photosCollectionView)
         view.addSubview(activityIndicator)
         
         NSLayoutConstraint.activate([
@@ -153,6 +200,19 @@ class CreatePostViewController: UIViewController {
             contentErrorLabel.topAnchor.constraint(equalTo: contentTextView.bottomAnchor, constant: 4),
             contentErrorLabel.leadingAnchor.constraint(equalTo: contentTextView.leadingAnchor),
             contentErrorLabel.trailingAnchor.constraint(equalTo: contentTextView.trailingAnchor),
+            
+            // ========== После constraints для contentErrorLabel ==========
+            
+            // Add Photos Button
+            addPhotosButton.topAnchor.constraint(equalTo: contentTextView.bottomAnchor, constant: 16),
+            addPhotosButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            addPhotosButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            
+            // Photos Collection View
+            photosCollectionView.topAnchor.constraint(equalTo: addPhotosButton.bottomAnchor, constant: 8),
+            photosCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            photosCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            photosCollectionView.heightAnchor.constraint(equalToConstant: 100),
             
             // Activity Indicator
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -193,7 +253,19 @@ class CreatePostViewController: UIViewController {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tapGesture.cancelsTouchesInView = false
         view.addGestureRecognizer(tapGesture)
-    }
+        
+        // ========== ДОБАВЬ ЭТО ПЕРЕД ЗАКРЫВАЮЩЕЙ СКОБКОЙ ==========
+        
+        // Add Photos Button
+        addPhotosButton.addTarget(self, action: #selector(addPhotosTapped), for: .touchUpInside)
+        
+        // Photos Collection View
+        photosCollectionView.delegate = self
+        photosCollectionView.dataSource = self
+        photosCollectionView.register(PhotoCell.self, forCellWithReuseIdentifier: PhotoCell.identifier)
+        photosCollectionView.isHidden = true
+        
+    } // ← вот эта закрывающая скобка метода
     
     // MARK: - Actions
     
@@ -232,6 +304,7 @@ class CreatePostViewController: UIViewController {
         }
     }
     
+    // ========== ПОСЛЕ ИЗМЕНЕНИЯ ==========
     @objc private func publishTapped() {
         clearErrors()
         
@@ -243,9 +316,16 @@ class CreatePostViewController: UIViewController {
             updatePost(post, title: title, content: content)
         } else {
             // Режим создания
-            viewModel.createPost(title: title, content: content)
+            if selectedImages.isEmpty {
+                // Без изображений - создаём как раньше
+                viewModel.createPost(title: title, content: content)
+            } else {
+                // С изображениями - новый метод
+                createPostWithImages(title: title, content: content, images: selectedImages)
+            }
         }
     }
+    // ========== КОНЕЦ ==========
     
     private func updatePost(_ post: Post, title: String, content: String) {
             // Валидация заголовка
@@ -301,6 +381,97 @@ class CreatePostViewController: UIViewController {
                 }
             }
         }
+    
+    
+    // ========== ДОБАВЬ ПОСЛЕ метода updatePost() ==========
+    
+    private func createPostWithImages(title: String, content: String, images: [UIImage]) {
+        // Валидация
+        if let titleError = viewModel.validateTitle(title) {
+            titleErrorLabel.text = titleError
+            titleErrorLabel.isHidden = false
+            return
+        }
+        
+        if let contentError = viewModel.validateContent(content) {
+            contentErrorLabel.text = contentError
+            contentErrorLabel.isHidden = false
+            return
+        }
+        
+        navigationItem.rightBarButtonItem?.isEnabled = false
+        activityIndicator.startAnimating()
+        dismissKeyboard()
+        
+        // Получаем текущего пользователя
+        guard let currentUser = FirebaseAuthService.shared.currentUser else {
+            showError("User not authenticated")
+            return
+        }
+        
+        // Загружаем данные пользователя
+        FirestoreUserService.shared.fetchUser(uid: currentUser.uid) { [weak self] result in
+            switch result {
+            case .success(let user):
+                // Создаём временный пост для получения ID
+                let tempPost = Post(
+                    title: title,
+                    content: content,
+                    authorId: user.uid,
+                    authorNickname: user.nickname
+                )
+                
+                // Загружаем изображения в Storage
+                FirebaseStorageService.shared.uploadPostImages(images, postId: tempPost.id) { uploadResult in
+                    DispatchQueue.main.async {
+                        switch uploadResult {
+                        case .success(let imageURLs):
+                            // Создаём пост с URL изображений
+                            let post = Post(
+                                id: tempPost.id,
+                                title: title,
+                                content: content,
+                                authorId: user.uid,
+                                authorNickname: user.nickname,
+                                images: imageURLs
+                            )
+                            
+                            // Сохраняем в Firestore
+                            FirestorePostService.shared.createPost(post) { saveResult in
+                                DispatchQueue.main.async {
+                                    self?.navigationItem.rightBarButtonItem?.isEnabled = true
+                                    self?.activityIndicator.stopAnimating()
+                                    
+                                    switch saveResult {
+                                    case .success:
+                                        self?.onPostCreated?()
+                                        self?.dismiss(animated: true)
+                                        
+                                    case .failure(let error):
+                                        self?.showError("Failed to create post: \(error.localizedDescription)")
+                                    }
+                                }
+                            }
+                            
+                        case .failure(let error):
+                            self?.navigationItem.rightBarButtonItem?.isEnabled = true
+                            self?.activityIndicator.stopAnimating()
+                            self?.showError("Failed to upload images: \(error.localizedDescription)")
+                        }
+                    }
+                }
+                
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    self?.navigationItem.rightBarButtonItem?.isEnabled = true
+                    self?.activityIndicator.stopAnimating()
+                    self?.showError("Failed to get user data: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    // ========== КОНЕЦ ==========
     
     
     
@@ -386,4 +557,80 @@ extension CreatePostViewController: UITextViewDelegate {
     func textViewDidBeginEditing(_ textView: UITextView) {
         contentPlaceholderLabel.isHidden = !textView.text.isEmpty
     }
+}
+
+// MARK: - Photo Picker
+
+extension CreatePostViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    
+    @objc private func addPhotosTapped() {
+        // Проверяем лимит
+        guard selectedImages.count < maxImages else {
+            let alert = UIAlertController(
+                title: "Maximum Photos",
+                message: "You can add up to \(maxImages) photos per post",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        
+        // Показываем picker
+        let picker = UIImagePickerController()
+        picker.delegate = self
+        picker.sourceType = .photoLibrary
+        picker.allowsEditing = false
+        present(picker, animated: true)
+    }
+    
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        picker.dismiss(animated: true)
+        
+        guard let image = info[.originalImage] as? UIImage else { return }
+        
+        // Добавляем фото если не превышен лимит
+        if selectedImages.count < maxImages {
+            selectedImages.append(image)
+        }
+    }
+    
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+    }
+    
+    private func updatePhotosButton() {
+        addPhotosButton.setTitle("📷 Add Photos (\(selectedImages.count)/\(maxImages))", for: .normal)
+        photosCollectionView.isHidden = selectedImages.isEmpty
+    }
+}
+
+// MARK: - UICollectionViewDataSource
+
+extension CreatePostViewController: UICollectionViewDataSource {
+    
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return selectedImages.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: PhotoCell.identifier, for: indexPath) as? PhotoCell else {
+            return UICollectionViewCell()
+        }
+        
+        let image = selectedImages[indexPath.item]
+        cell.configure(with: image)
+        
+        cell.onDeleteTapped = { [weak self] in
+            self?.selectedImages.remove(at: indexPath.item)
+        }
+        
+        return cell
+    }
+}
+
+// MARK: - UICollectionViewDelegate
+
+extension CreatePostViewController: UICollectionViewDelegate {
+    // Пока пустой, может понадобиться позже
 }
