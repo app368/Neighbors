@@ -409,21 +409,13 @@ class PostDetailViewController: UIViewController {
             
             imagesStackView.addArrangedSubview(imageView)
             
-            // Загружаем изображение асинхронно
-            URLSession.shared.dataTask(with: url) { data, _, _ in
-                guard let data = data, let image = UIImage(data: data) else { return }
-                DispatchQueue.main.async {
-                    imageView.image = image
-                }
-            }.resume()
+            // Загружаем изображение с кэшированием
+            ImageCacheService.shared.loadImage(from: urlString) { image in
+                imageView.image = image
+            }
         }
     }
-    
-    // ========== КОНЕЦ ==========
-    
-    
-    
-    
+ 
     private func updatePostCounts(_ post: Post) {
             likeCountLabel.text = "\(post.likesCount)"
             commentCountLabel.text = "💬 \(post.commentsCount)"
