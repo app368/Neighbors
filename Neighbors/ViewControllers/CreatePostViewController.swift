@@ -102,6 +102,8 @@ class CreatePostViewController: UIViewController {
     
     /// Callback для обновления ленты после создания поста
     var onPostCreated: (() -> Void)?
+    /// Callback с созданным постом (для перехода в карточку)
+    var onPostCreatedWithPost: ((Post) -> Void)?
     
     /// Пост для редактирования (если nil - режим создания)
     private var postToEdit: Post?
@@ -486,7 +488,7 @@ class CreatePostViewController: UIViewController {
                                     switch saveResult {
                                     case .success:
                                         self?.onPostCreated?()
-                                        self?.dismiss(animated: true)
+                                        self?.showPostDetail(post)
                                         
                                     case .failure(let error):
                                         self?.showError("Failed to create post: \(error.localizedDescription)")
@@ -586,6 +588,22 @@ class CreatePostViewController: UIViewController {
         addPhotosButton.setTitle("📷 Add Photos (\(total)/\(maxImages))", for: .normal)
         photosCollectionView.isHidden = (total == 0)
     }
+    
+    /// Показать карточку поста после создания (заменяет экран создания)
+        private func showPostDetail(_ post: Post) {
+            let detailVC = PostDetailViewController(post: post)
+            
+            // При нажатии Done — закрываем модальное окно
+            detailVC.navigationItem.leftBarButtonItem = UIBarButtonItem(
+                title: "Done",
+                style: .prominent,
+                target: detailVC,
+                action: #selector(UIViewController.dismissSelf)
+            )
+            
+            // Заменяем текущий экран на карточку поста
+            navigationController?.setViewControllers([detailVC], animated: true)
+        }
     
     // MARK: - Public Methods
     
@@ -691,4 +709,12 @@ extension CreatePostViewController: UICollectionViewDataSource {
 
 extension CreatePostViewController: UICollectionViewDelegate {
     // Пока пустой, может понадобиться позже
+}
+
+// MARK: - UIViewController Extension
+
+extension UIViewController {
+    @objc func dismissSelf() {
+        dismiss(animated: true)
+    }
 }

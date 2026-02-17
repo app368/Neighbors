@@ -182,7 +182,7 @@ class PostTableViewCell: UITableViewCell {
         commentsLabel.text = "💬 \(post.commentsCount)"
         
         // Превью первого изображения
-        if let firstImageURL = post.images.first, let url = URL(string: firstImageURL) {
+        if let firstImageURL = post.images.first, URL(string: firstImageURL) != nil {
             previewImageView.isHidden = false
             previewImageView.image = nil
             previewHeightConstraint.constant = 180

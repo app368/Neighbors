@@ -397,7 +397,7 @@ class PostDetailViewController: UIViewController {
         
         // Создаём ImageView для каждого URL
         for urlString in imageURLs {
-            guard let url = URL(string: urlString) else { continue }
+            guard URL(string: urlString) != nil else { continue }
             
             let imageView = UIImageView()
             imageView.contentMode = .scaleAspectFill

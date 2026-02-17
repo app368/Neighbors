@@ -134,20 +134,16 @@ class FeedViewController: UIViewController {
     
     
     @objc private func createPostTapped() {
-            // Создаём экран создания поста
-            let createPostVC = CreatePostViewController()
-            
-            // Устанавливаем callback для обновления ленты после создания поста
-            createPostVC.onPostCreated = { [weak self] in
-                self?.viewModel.loadPosts()
-            }
-            
-            // Оборачиваем в NavigationController для показа navigation bar
-            let navigationController = UINavigationController(rootViewController: createPostVC)
-            
-            // Показываем модально
-            present(navigationController, animated: true)
+        let createPostVC = CreatePostViewController()
+        
+        // Callback для обновления ленты
+        createPostVC.onPostCreated = { [weak self] in
+            self?.viewModel.loadPosts()
         }
+        
+        let navigationController = UINavigationController(rootViewController: createPostVC)
+        present(navigationController, animated: true)
+    }
     
     
     @objc private func logoutTapped() {
@@ -179,6 +175,23 @@ class FeedViewController: UIViewController {
             present(alert, animated: true)
         }
     }
+    
+    // MARK: - Navigation
+        
+        /// Открыть карточку поста
+        private func openPostDetail(_ post: Post) {
+            let detailVC = PostDetailViewController(post: post)
+            
+            detailVC.onPostDeleted = { [weak self] in
+                self?.viewModel.loadPosts()
+            }
+            
+            detailVC.onPostUpdated = { [weak self] updatedPost in
+                self?.viewModel.updatePost(updatedPost)
+            }
+            
+            navigationController?.pushViewController(detailVC, animated: true)
+        }
     
     // MARK: - State Handling
     
@@ -246,22 +259,6 @@ extension FeedViewController: UITableViewDelegate {
             tableView.deselectRow(at: indexPath, animated: true)
             
             guard let post = viewModel.post(at: indexPath.row) else { return }
-            
-            // Создаём экран детального поста
-            let detailVC = PostDetailViewController(post: post)
-            
-            // Устанавливаем callback для обновления ленты при удалении поста
-            detailVC.onPostDeleted = { [weak self] in
-                self?.viewModel.loadPosts()
-            }
-            
-            // Устанавливаем callback для обновления поста при редактировании
-            detailVC.onPostUpdated = { [weak self] updatedPost in
-                // Обновляем пост в FeedViewModel
-                self?.viewModel.updatePost(updatedPost)
-            }
-            
-            // Открываем экран
-            navigationController?.pushViewController(detailVC, animated: true)
+            openPostDetail(post)
         }
 }
