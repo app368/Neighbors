@@ -74,6 +74,24 @@ class PostTableViewCell: UITableViewCell {
         return stackView
     }()
     
+    // === Превью изображения в ленте ===
+    
+    private let previewImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        imageView.backgroundColor = .systemGray6
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isHidden = true
+        return imageView
+    }()
+    
+    private var statsTopToPreviewConstraint: NSLayoutConstraint!
+    private var statsTopToContentConstraint: NSLayoutConstraint!
+    private var previewHeightConstraint: NSLayoutConstraint!
+    
+    
     // MARK: - Initialization
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -94,19 +112,30 @@ class PostTableViewCell: UITableViewCell {
         contentView.addSubview(dateLabel)
         contentView.addSubview(contentPreviewLabel)
         contentView.addSubview(statsStackView)
+        contentView.addSubview(previewImageView)
+
         
         statsStackView.addArrangedSubview(likesLabel)
         statsStackView.addArrangedSubview(commentsLabel)
+
         
+        // Constraint, который привязывает stats к превью (когда фото есть)
+        statsTopToPreviewConstraint = statsStackView.topAnchor.constraint(equalTo: previewImageView.bottomAnchor, constant: 8)
+
+        // Constraint, который привязывает stats к тексту (когда фото нет)
+        statsTopToContentConstraint = statsStackView.topAnchor.constraint(equalTo: contentPreviewLabel.bottomAnchor, constant: 8)
+
+        // Высота превью
+        previewHeightConstraint = previewImageView.heightAnchor.constraint(equalToConstant: 180)
+
         NSLayoutConstraint.activate([
-            
             // Avatar
             avatarView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
             avatarView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             avatarView.widthAnchor.constraint(equalToConstant: 40),
             avatarView.heightAnchor.constraint(equalToConstant: 40),
             
-            // Title (Теперь сдвигаем вправо от аватара)
+            // Title
             titleLabel.topAnchor.constraint(equalTo: avatarView.topAnchor),
             titleLabel.leadingAnchor.constraint(equalTo: avatarView.trailingAnchor, constant: 12),
             titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
@@ -124,11 +153,19 @@ class PostTableViewCell: UITableViewCell {
             contentPreviewLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             contentPreviewLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             
-            // Stats Stack View
-            statsStackView.topAnchor.constraint(equalTo: contentPreviewLabel.bottomAnchor, constant: 8),
+            // Preview Image — под текстом
+            previewImageView.topAnchor.constraint(equalTo: contentPreviewLabel.bottomAnchor, constant: 8),
+            previewImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            previewImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            previewHeightConstraint,
+            
+            // Stats — bottom привяжется динамически
             statsStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             statsStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12)
         ])
+
+        // По умолчанию — без фото
+        statsTopToContentConstraint.isActive = true
     }
     
     // MARK: - Configuration
@@ -143,6 +180,42 @@ class PostTableViewCell: UITableViewCell {
         contentPreviewLabel.text = post.getContentPreview(maxLength: 100)
         likesLabel.text = "❤️ \(post.likesCount)"
         commentsLabel.text = "💬 \(post.commentsCount)"
+        
+        // Превью первого изображения
+        if let firstImageURL = post.images.first, let url = URL(string: firstImageURL) {
+            previewImageView.isHidden = false
+            previewImageView.image = nil
+            previewHeightConstraint.constant = 180
+            
+            // Переключаем constraints: stats привязан к превью
+            statsTopToContentConstraint.isActive = false
+            statsTopToPreviewConstraint.isActive = true
+            
+            // Загружаем изображение
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let data = data, let image = UIImage(data: data) else { return }
+                DispatchQueue.main.async {
+                    self?.previewImageView.image = image
+                }
+            }.resume()
+        } else {
+            // Нет изображений — скрываем превью
+            previewImageView.isHidden = true
+            previewHeightConstraint.constant = 0
+            
+            // Переключаем constraints: stats привязан к тексту
+            statsTopToPreviewConstraint.isActive = false
+            statsTopToContentConstraint.isActive = true
+        }
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        previewImageView.image = nil
+        previewImageView.isHidden = true
+        previewHeightConstraint.constant = 0
+        statsTopToPreviewConstraint.isActive = false
+        statsTopToContentConstraint.isActive = true
     }
 
 }

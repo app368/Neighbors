@@ -72,7 +72,6 @@ class PostDetailViewController: UIViewController {
     private let imagesScrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.showsHorizontalScrollIndicator = false
-        scrollView.isPagingEnabled = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         return scrollView
     }()
@@ -86,11 +85,7 @@ class PostDetailViewController: UIViewController {
     }()
     
     private var imagesScrollViewHeightConstraint: NSLayoutConstraint!
-    
-    // ========== КОНЕЦ ==========
-    
-    
-    
+
     
     private let likeButton: UIButton = {
         let button = UIButton(type: .system)
@@ -222,17 +217,10 @@ class PostDetailViewController: UIViewController {
         postHeaderView.addSubview(likeButton)
         postHeaderView.addSubview(likeCountLabel)
         postHeaderView.addSubview(commentCountLabel)
-        
-        // ========== ДОБАВЬ ПОСЛЕ ==========
         postHeaderView.addSubview(imagesScrollView)
         imagesScrollView.addSubview(imagesStackView)
-        // ========== КОНЕЦ ==========
-        
-        
-        
         contentStackView.addArrangedSubview(postHeaderView)
         contentStackView.addArrangedSubview(separatorView)
-        contentStackView.addArrangedSubview(commentsTableView)
         contentStackView.addArrangedSubview(commentsTableView)
         contentStackView.addArrangedSubview(emptyCommentsLabel)
         
@@ -280,27 +268,23 @@ class PostDetailViewController: UIViewController {
             contentLabel.leadingAnchor.constraint(equalTo: postHeaderView.leadingAnchor, constant: 16),
             contentLabel.trailingAnchor.constraint(equalTo: postHeaderView.trailingAnchor, constant: -16),
             
+
             
-            
-            // ========== ИЗМЕНИ НА ==========
-            
-            // Images Gallery
+            /// Images Gallery — горизонтальная прокрутка фотографий
             imagesScrollView.topAnchor.constraint(equalTo: contentLabel.bottomAnchor, constant: 16),
             imagesScrollView.leadingAnchor.constraint(equalTo: postHeaderView.leadingAnchor),
             imagesScrollView.trailingAnchor.constraint(equalTo: postHeaderView.trailingAnchor),
-            imagesScrollView.heightAnchor.constraint(equalToConstant: 0), // Будет обновляться динамически
-            
+
             imagesStackView.topAnchor.constraint(equalTo: imagesScrollView.topAnchor),
-            imagesStackView.leadingAnchor.constraint(equalTo: imagesScrollView.leadingAnchor, constant: 0),
+            imagesStackView.leadingAnchor.constraint(equalTo: imagesScrollView.leadingAnchor, constant: 16),
             imagesStackView.trailingAnchor.constraint(equalTo: imagesScrollView.trailingAnchor, constant: -16),
             imagesStackView.bottomAnchor.constraint(equalTo: imagesScrollView.bottomAnchor),
             imagesStackView.heightAnchor.constraint(equalTo: imagesScrollView.heightAnchor),
-            
-          
-            // ========== КОНЕЦ ==========
+
             
             
-            likeButton.topAnchor.constraint(equalTo: contentLabel.bottomAnchor, constant: 16),
+            // Кнопка лайка — привязана к низу галереи, а не к contentLabel
+            likeButton.topAnchor.constraint(equalTo: imagesScrollView.bottomAnchor, constant: 16),
             likeButton.leadingAnchor.constraint(equalTo: postHeaderView.leadingAnchor, constant: 16),
             likeButton.widthAnchor.constraint(equalToConstant: 28),
             likeButton.heightAnchor.constraint(equalToConstant: 28),
@@ -332,6 +316,9 @@ class PostDetailViewController: UIViewController {
             activityIndicator.centerXAnchor.constraint(equalTo: commentsTableView.centerXAnchor),
             activityIndicator.topAnchor.constraint(equalTo: commentsTableView.topAnchor, constant: 20)
         ])
+        // Начальная высота галереи — 0 (обновится в loadPostImages)
+        imagesScrollViewHeightConstraint = imagesScrollView.heightAnchor.constraint(equalToConstant: 0)
+        imagesScrollViewHeightConstraint.isActive = true
     }
     
     private func setupTableView() {
@@ -392,53 +379,45 @@ class PostDetailViewController: UIViewController {
     // ========== ДОБАВЬ ПОСЛЕ метода configurePostHeader() ==========
     
     private func loadPostImages(_ imageURLs: [String]) {
-            // Очищаем предыдущие изображения
-            imagesStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-            
-            guard !imageURLs.isEmpty else {
-                // Нет изображений - скрываем галерею
-                imagesScrollView.isHidden = true
-                return
-            }
-            
-            imagesScrollView.isHidden = false
-            
-            // Высота галереи = ширина экрана * 0.7
-            let imageHeight = view.bounds.width * 0.7
-            
-            // Обновляем constraint высоты
-            imagesScrollView.constraints.forEach { constraint in
-                if constraint.firstAttribute == .height {
-                    constraint.constant = imageHeight
-                }
-            }
-            
-            // Загружаем каждое изображение
-            for urlString in imageURLs {
-                guard let url = URL(string: urlString) else { continue }
-                
-                let imageView = UIImageView()
-                imageView.contentMode = .scaleAspectFill
-                imageView.clipsToBounds = true
-                imageView.layer.cornerRadius = 8
-                imageView.backgroundColor = .systemGray6
-                imageView.translatesAutoresizingMaskIntoConstraints = false
-                
-                // Ширина = ширина экрана - отступы
-                let imageWidth = view.bounds.width - 32
-                imageView.widthAnchor.constraint(equalToConstant: imageWidth).isActive = true
-                
-                imagesStackView.addArrangedSubview(imageView)
-                
-                // Загружаем изображение асинхронно
-                URLSession.shared.dataTask(with: url) { data, _, _ in
-                    guard let data = data, let image = UIImage(data: data) else { return }
-                    DispatchQueue.main.async {
-                        imageView.image = image
-                    }
-                }.resume()
-            }
+        // Очищаем предыдущие изображения
+        imagesStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        guard !imageURLs.isEmpty else {
+            // Нет изображений — скрываем галерею
+            imagesScrollViewHeightConstraint.constant = 0
+            return
         }
+        
+        // Высота галереи = ширина экрана * 0.6
+        let imageHeight = view.bounds.width * 0.6
+        imagesScrollViewHeightConstraint.constant = imageHeight
+        
+        // Ширина каждого изображения
+        let imageWidth = view.bounds.width - 32
+        
+        // Создаём ImageView для каждого URL
+        for urlString in imageURLs {
+            guard let url = URL(string: urlString) else { continue }
+            
+            let imageView = UIImageView()
+            imageView.contentMode = .scaleAspectFill
+            imageView.clipsToBounds = true
+            imageView.layer.cornerRadius = 8
+            imageView.backgroundColor = .systemGray6
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            imageView.widthAnchor.constraint(equalToConstant: imageWidth).isActive = true
+            
+            imagesStackView.addArrangedSubview(imageView)
+            
+            // Загружаем изображение асинхронно
+            URLSession.shared.dataTask(with: url) { data, _, _ in
+                guard let data = data, let image = UIImage(data: data) else { return }
+                DispatchQueue.main.async {
+                    imageView.image = image
+                }
+            }.resume()
+        }
+    }
     
     // ========== КОНЕЦ ==========
     
