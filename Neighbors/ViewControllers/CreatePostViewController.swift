@@ -67,8 +67,6 @@ class CreatePostViewController: UIViewController {
         return label
     }()
     
-    // ========== ПОСЛЕ contentErrorLabel ==========
-        
     private let addPhotosButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("📷 Add Photos (0/3)", for: .normal)
@@ -91,9 +89,6 @@ class CreatePostViewController: UIViewController {
         return collectionView
     }()
     
-    // ========== КОНЕЦ ==========
-    
-    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .medium)
         indicator.hidesWhenStopped = true
@@ -114,9 +109,15 @@ class CreatePostViewController: UIViewController {
     /// Callback для обновления поста после редактирования
     var onPostUpdated: ((Post) -> Void)?
     
-    // ========== ПОСЛЕ onPostUpdated ==========
-        
-    /// Выбранные изображения
+    /// URL изображений, которые уже есть в Firebase (для режима редактирования)
+    private var existingImageURLs: [String] = []
+    
+    /// Общее количество изображений (существующие + новые)
+    private var totalImagesCount: Int {
+        return existingImageURLs.count + selectedImages.count
+    }
+    
+    /// Выбранные изображения (существующие загруженные + новые из галереи)
     private var selectedImages: [UIImage] = [] {
         didSet {
             updatePhotosButton()
@@ -125,11 +126,6 @@ class CreatePostViewController: UIViewController {
     }
     
     private let maxImages = 3
-    
-    // ========== КОНЕЦ ==========
-    
-    
-    
     
     // MARK: - Lifecycle
     
@@ -140,12 +136,16 @@ class CreatePostViewController: UIViewController {
         setupNavigationBar()
         setupTextFields()
         
-        // Если редактируем пост - заполняем поля
+        // Если редактируем пост — заполняем поля
         if let post = postToEdit {
             titleTextField.text = post.title
             contentTextView.text = post.content
-            titleTextChanged() // Обновить счётчик символов
-            textViewDidChange(contentTextView) // Скрыть placeholder
+            titleTextChanged()
+            textViewDidChange(contentTextView)
+            
+            // Загружаем существующие изображения поста
+            existingImageURLs = post.images
+            loadExistingImages()
         }
     }
     
@@ -201,8 +201,6 @@ class CreatePostViewController: UIViewController {
             contentErrorLabel.leadingAnchor.constraint(equalTo: contentTextView.leadingAnchor),
             contentErrorLabel.trailingAnchor.constraint(equalTo: contentTextView.trailingAnchor),
             
-            // ========== После constraints для contentErrorLabel ==========
-            
             // Add Photos Button
             addPhotosButton.topAnchor.constraint(equalTo: contentTextView.bottomAnchor, constant: 16),
             addPhotosButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
@@ -230,20 +228,18 @@ class CreatePostViewController: UIViewController {
     }
     
     private func setupNavigationBar() {
-            // Заголовок меняется в зависимости от режима
-            title = postToEdit != nil ? "Edit Post" : "New Post"
-            
-            // Кнопка Cancel
-            let cancelButton = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelTapped))
-            navigationItem.leftBarButtonItem = cancelButton
-            
-            // Кнопка Publish/Save
-            let saveButtonTitle = postToEdit != nil ? "Save" : "Publish"
-            let publishButton = UIBarButtonItem(title: saveButtonTitle, style: .prominent, target: self, action: #selector(publishTapped))
-            navigationItem.rightBarButtonItem = publishButton
-        }
-    
-    
+        // Заголовок меняется в зависимости от режима
+        title = postToEdit != nil ? "Edit Post" : "New Post"
+        
+        // Кнопка Cancel
+        let cancelButton = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelTapped))
+        navigationItem.leftBarButtonItem = cancelButton
+        
+        // Кнопка Publish/Save
+        let saveButtonTitle = postToEdit != nil ? "Save" : "Publish"
+        let publishButton = UIBarButtonItem(title: saveButtonTitle, style: .prominent, target: self, action: #selector(publishTapped))
+        navigationItem.rightBarButtonItem = publishButton
+    }
     
     private func setupTextFields() {
         titleTextField.addTarget(self, action: #selector(titleTextChanged), for: .editingChanged)
@@ -254,18 +250,15 @@ class CreatePostViewController: UIViewController {
         tapGesture.cancelsTouchesInView = false
         view.addGestureRecognizer(tapGesture)
         
-        // ========== ДОБАВЬ ЭТО ПЕРЕД ЗАКРЫВАЮЩЕЙ СКОБКОЙ ==========
-        
-        // Add Photos Button
+        // Настройка кнопки добавления фото
         addPhotosButton.addTarget(self, action: #selector(addPhotosTapped), for: .touchUpInside)
         
-        // Photos Collection View
+        // Настройка коллекции фото
         photosCollectionView.delegate = self
         photosCollectionView.dataSource = self
         photosCollectionView.register(PhotoCell.self, forCellWithReuseIdentifier: PhotoCell.identifier)
         photosCollectionView.isHidden = true
-        
-    } // ← вот эта закрывающая скобка метода
+    }
     
     // MARK: - Actions
     
@@ -284,7 +277,7 @@ class CreatePostViewController: UIViewController {
         let title = titleTextField.text ?? ""
         let content = contentTextView.text ?? ""
         
-        // Если есть введённый текст - показываем предупреждение
+        // Если есть введённый текст — показываем предупреждение
         if !title.isEmpty || !content.isEmpty {
             let alert = UIAlertController(
                 title: "Discard Post?",
@@ -299,12 +292,11 @@ class CreatePostViewController: UIViewController {
             
             present(alert, animated: true)
         } else {
-            // Если поля пустые - просто закрываем
+            // Если поля пустые — просто закрываем
             dismiss(animated: true)
         }
     }
     
-    // ========== ПОСЛЕ ИЗМЕНЕНИЯ ==========
     @objc private func publishTapped() {
         clearErrors()
         
@@ -317,73 +309,122 @@ class CreatePostViewController: UIViewController {
         } else {
             // Режим создания
             if selectedImages.isEmpty {
-                // Без изображений - создаём как раньше
+                // Без изображений — создаём как раньше
                 viewModel.createPost(title: title, content: content)
             } else {
-                // С изображениями - новый метод
+                // С изображениями — новый метод
                 createPostWithImages(title: title, content: content, images: selectedImages)
             }
         }
     }
-    // ========== КОНЕЦ ==========
+    
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+    
+    // MARK: - Обновление поста (с поддержкой изображений)
     
     private func updatePost(_ post: Post, title: String, content: String) {
-            // Валидация заголовка
-            if let titleError = viewModel.validateTitle(title) {
-                titleErrorLabel.text = titleError
-                titleErrorLabel.isHidden = false
-                return
-            }
+        // Валидация заголовка
+        if let titleError = viewModel.validateTitle(title) {
+            titleErrorLabel.text = titleError
+            titleErrorLabel.isHidden = false
+            return
+        }
+        
+        // Валидация контента
+        if let contentError = viewModel.validateContent(content) {
+            contentErrorLabel.text = contentError
+            contentErrorLabel.isHidden = false
+            return
+        }
+        
+        navigationItem.rightBarButtonItem?.isEnabled = false
+        activityIndicator.startAnimating()
+        dismissKeyboard()
+        
+        // Определяем новые изображения (те, что добавлены после существующих)
+        let existingCount = existingImageURLs.count
+        let newImages = Array(selectedImages.dropFirst(existingCount))
+        
+        if newImages.isEmpty {
+            // Нет новых фото — обновляем только текст и текущие URL
+            let fields: [String: Any] = [
+                "title": title,
+                "content": content,
+                "images": existingImageURLs
+            ]
             
-            // Валидация контента
-            if let contentError = viewModel.validateContent(content) {
-                contentErrorLabel.text = contentError
-                contentErrorLabel.isHidden = false
-                return
-            }
-            
-            navigationItem.rightBarButtonItem?.isEnabled = false
-            activityIndicator.startAnimating()
-            dismissKeyboard()
-            
-            // Обновляем пост в Firestore
-            FirestorePostService.shared.updatePost(
-                postId: post.id,
-                fields: ["title": title, "content": content]
-            ) { [weak self] result in
+            FirestorePostService.shared.updatePost(postId: post.id, fields: fields) { [weak self] result in
                 DispatchQueue.main.async {
                     self?.navigationItem.rightBarButtonItem?.isEnabled = true
                     self?.activityIndicator.stopAnimating()
                     
                     switch result {
                     case .success:
-                        // Создаём обновлённый объект Post
                         var updatedPost = post
                         updatedPost.title = title
                         updatedPost.content = content
+                        updatedPost.images = self?.existingImageURLs ?? post.images
+
                         updatedPost.updatedAt = Date()
-                        
-                        // Вызываем callback
                         self?.onPostUpdated?(updatedPost)
-                        
-                        // Закрываем экран
                         self?.dismiss(animated: true)
                         
                     case .failure(let error):
-                        let alert = UIAlertController(
-                            title: "Error",
-                            message: "Failed to update post: \(error.localizedDescription)",
-                            preferredStyle: .alert
-                        )
-                        alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self?.present(alert, animated: true)
+                        self?.showError("Failed to update post: \(error.localizedDescription)")
+                    }
+                }
+            }
+        } else {
+            // Есть новые фото — загружаем в Storage, потом обновляем пост
+            FirebaseStorageService.shared.uploadPostImages(newImages, postId: post.id) { [weak self] uploadResult in
+                guard let self = self else { return }
+                
+                DispatchQueue.main.async {
+                    switch uploadResult {
+                    case .success(let newURLs):
+                        // Объединяем существующие URL с новыми
+                        let allImageURLs = self.existingImageURLs + newURLs
+                        
+                        let fields: [String: Any] = [
+                            "title": title,
+                            "content": content,
+                            "images": allImageURLs
+                        ]
+                        
+                        FirestorePostService.shared.updatePost(postId: post.id, fields: fields) { result in
+                            DispatchQueue.main.async {
+                                self.navigationItem.rightBarButtonItem?.isEnabled = true
+                                self.activityIndicator.stopAnimating()
+                                
+                                switch result {
+                                case .success:
+                                    var updatedPost = post
+                                    updatedPost.title = title
+                                    updatedPost.content = content
+                                    updatedPost.images = allImageURLs
+                                    updatedPost.updatedAt = Date()
+                                    self.onPostUpdated?(updatedPost)
+                                    self.dismiss(animated: true)
+                                    
+                                case .failure(let error):
+                                    self.showError("Failed to update post: \(error.localizedDescription)")
+                                }
+                            }
+                        }
+                        
+                    case .failure(let error):
+                        self.navigationItem.rightBarButtonItem?.isEnabled = true
+                        self.activityIndicator.stopAnimating()
+                        self.showError("Failed to upload images: \(error.localizedDescription)")
                     }
                 }
             }
         }
+    }
     
-    
-    // ========== ДОБАВЬ ПОСЛЕ метода updatePost() ==========
+    // MARK: - Создание поста с изображениями
     
     private func createPostWithImages(title: String, content: String, images: [UIImage]) {
         // Валидация
@@ -471,15 +512,6 @@ class CreatePostViewController: UIViewController {
         }
     }
     
-    // ========== КОНЕЦ ==========
-    
-    
-    
-    
-    @objc private func dismissKeyboard() {
-        view.endEditing(true)
-    }
-    
     // MARK: - State Handling
     
     private func handleStateChange(_ state: CreatePostState) {
@@ -531,16 +563,39 @@ class CreatePostViewController: UIViewController {
         contentErrorLabel.isHidden = true
     }
     
+    // MARK: - Загрузка существующих изображений
+    
+    /// Загружает изображения по URL и добавляет их в selectedImages
+    private func loadExistingImages() {
+        guard !existingImageURLs.isEmpty else { return }
+        
+        updatePhotosButton()
+        photosCollectionView.isHidden = false
+        
+        for urlString in existingImageURLs {
+            ImageCacheService.shared.loadImage(from: urlString) { [weak self] image in
+                guard let self = self, let image = image else { return }
+                self.selectedImages.append(image)
+            }
+        }
+    }
+    
+    /// Обновляет текст кнопки и видимость коллекции фото
+    private func updatePhotosButton() {
+        let total = totalImagesCount
+        addPhotosButton.setTitle("📷 Add Photos (\(total)/\(maxImages))", for: .normal)
+        photosCollectionView.isHidden = (total == 0)
+    }
     
     // MARK: - Public Methods
-        
-        /// Установить пост для редактирования
-        /// - Parameter post: Пост который нужно отредактировать
-        func setPostToEdit(_ post: Post) {
-            self.postToEdit = post
-        }
     
-}
+    /// Установить пост для редактирования
+    /// - Parameter post: Пост который нужно отредактировать
+    func setPostToEdit(_ post: Post) {
+        self.postToEdit = post
+    }
+    
+} // ← Закрывающая скобка класса
 
 // MARK: - UITextViewDelegate
 
@@ -565,7 +620,7 @@ extension CreatePostViewController: UIImagePickerControllerDelegate, UINavigatio
     
     @objc private func addPhotosTapped() {
         // Проверяем лимит
-        guard selectedImages.count < maxImages else {
+        guard totalImagesCount < maxImages else {
             let alert = UIAlertController(
                 title: "Maximum Photos",
                 message: "You can add up to \(maxImages) photos per post",
@@ -598,11 +653,6 @@ extension CreatePostViewController: UIImagePickerControllerDelegate, UINavigatio
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         picker.dismiss(animated: true)
     }
-    
-    private func updatePhotosButton() {
-        addPhotosButton.setTitle("📷 Add Photos (\(selectedImages.count)/\(maxImages))", for: .normal)
-        photosCollectionView.isHidden = selectedImages.isEmpty
-    }
 }
 
 // MARK: - UICollectionViewDataSource
@@ -622,7 +672,15 @@ extension CreatePostViewController: UICollectionViewDataSource {
         cell.configure(with: image)
         
         cell.onDeleteTapped = { [weak self] in
-            self?.selectedImages.remove(at: indexPath.item)
+            guard let self = self else { return }
+            let index = indexPath.item
+            
+            // Если удаляем существующее фото — убираем его URL
+            if index < self.existingImageURLs.count {
+                self.existingImageURLs.remove(at: index)
+            }
+            
+            self.selectedImages.remove(at: index)
         }
         
         return cell

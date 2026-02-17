@@ -10,7 +10,7 @@ struct Post {
     var content: String
     let authorId: String
     let authorNickname: String
-    let images: [String]
+    var images: [String]
     let videoLinks: [String]
     var likesCount: Int
     var commentsCount: Int
