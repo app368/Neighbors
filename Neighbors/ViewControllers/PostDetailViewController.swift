@@ -85,6 +85,37 @@ class PostDetailViewController: UIViewController {
     }()
     
     private var imagesScrollViewHeightConstraint: NSLayoutConstraint!
+    
+    // Видео превью
+    private let videoContainerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    private let videoThumbnailImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        imageView.backgroundColor = .systemGray6
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isUserInteractionEnabled = true
+        return imageView
+    }()
+    
+    private let videoPlayButton: UIImageView = {
+        let imageView = UIImageView()
+        imageView.image = UIImage(systemName: "play.circle.fill")
+        imageView.tintColor = .white
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    
+    private var videoContainerHeightConstraint: NSLayoutConstraint!
+    
+    /// URL видео для открытия в Safari
+    private var videoURL: String?
 
     
     private let likeButton: UIButton = {
@@ -219,6 +250,9 @@ class PostDetailViewController: UIViewController {
         postHeaderView.addSubview(commentCountLabel)
         postHeaderView.addSubview(imagesScrollView)
         imagesScrollView.addSubview(imagesStackView)
+        postHeaderView.addSubview(videoContainerView)
+        videoContainerView.addSubview(videoThumbnailImageView)
+        videoContainerView.addSubview(videoPlayButton)
         contentStackView.addArrangedSubview(postHeaderView)
         contentStackView.addArrangedSubview(separatorView)
         contentStackView.addArrangedSubview(commentsTableView)
@@ -282,9 +316,24 @@ class PostDetailViewController: UIViewController {
             imagesStackView.heightAnchor.constraint(equalTo: imagesScrollView.heightAnchor),
 
             
+            // Видео превью — под галереей фото
+            videoContainerView.topAnchor.constraint(equalTo: imagesScrollView.bottomAnchor, constant: 12),
+            videoContainerView.leadingAnchor.constraint(equalTo: postHeaderView.leadingAnchor, constant: 16),
+            videoContainerView.trailingAnchor.constraint(equalTo: postHeaderView.trailingAnchor, constant: -16),
             
-            // Кнопка лайка — привязана к низу галереи, а не к contentLabel
-            likeButton.topAnchor.constraint(equalTo: imagesScrollView.bottomAnchor, constant: 16),
+            videoThumbnailImageView.topAnchor.constraint(equalTo: videoContainerView.topAnchor),
+            videoThumbnailImageView.leadingAnchor.constraint(equalTo: videoContainerView.leadingAnchor),
+            videoThumbnailImageView.trailingAnchor.constraint(equalTo: videoContainerView.trailingAnchor),
+            videoThumbnailImageView.bottomAnchor.constraint(equalTo: videoContainerView.bottomAnchor),
+            
+            videoPlayButton.centerXAnchor.constraint(equalTo: videoContainerView.centerXAnchor),
+            videoPlayButton.centerYAnchor.constraint(equalTo: videoContainerView.centerYAnchor),
+            videoPlayButton.widthAnchor.constraint(equalToConstant: 60),
+            videoPlayButton.heightAnchor.constraint(equalToConstant: 60),
+            
+            // Кнопка лайка — привязана к низу видео
+            likeButton.topAnchor.constraint(equalTo: videoContainerView.bottomAnchor, constant: 16),
+            
             likeButton.leadingAnchor.constraint(equalTo: postHeaderView.leadingAnchor, constant: 16),
             likeButton.widthAnchor.constraint(equalToConstant: 28),
             likeButton.heightAnchor.constraint(equalToConstant: 28),
@@ -319,6 +368,14 @@ class PostDetailViewController: UIViewController {
         // Начальная высота галереи — 0 (обновится в loadPostImages)
         imagesScrollViewHeightConstraint = imagesScrollView.heightAnchor.constraint(equalToConstant: 0)
         imagesScrollViewHeightConstraint.isActive = true
+        
+        // Начальная высота видео — 0 (обновится в loadVideoPreview)
+        videoContainerHeightConstraint = videoContainerView.heightAnchor.constraint(equalToConstant: 0)
+        videoContainerHeightConstraint.isActive = true
+        
+        // Tap на видео — открытие в Safari
+        let videoTap = UITapGestureRecognizer(target: self, action: #selector(videoThumbnailTapped))
+        videoContainerView.addGestureRecognizer(videoTap)
     }
     
     private func setupTableView() {
@@ -374,9 +431,12 @@ class PostDetailViewController: UIViewController {
         
         // Загружаем изображения
         loadPostImages(post.images)
+        
+        // Загружаем видео превью
+        loadVideoPreview(post.videoLinks.first)
     }
     
-    // ========== ДОБАВЬ ПОСЛЕ метода configurePostHeader() ==========
+
     
     private func loadPostImages(_ imageURLs: [String]) {
         // Очищаем предыдущие изображения
@@ -415,6 +475,46 @@ class PostDetailViewController: UIViewController {
             }
         }
     }
+    
+    // MARK: - Видео превью
+    
+    /// Загружает превью видео и показывает его
+    private func loadVideoPreview(_ videoURLString: String?) {
+        guard let urlString = videoURLString,
+              let info = VideoLinkService.shared.parseVideoURL(urlString) else {
+            // Нет видео — скрываем контейнер
+            videoContainerHeightConstraint.constant = 0
+            videoURL = nil
+            return
+        }
+        
+        // Сохраняем URL для открытия
+        videoURL = urlString
+        
+        // Высота превью
+        videoContainerHeightConstraint.constant = view.bounds.width * 0.5
+        
+        // Загружаем превью в зависимости от платформы
+        if info.platform == .youtube {
+            ImageCacheService.shared.loadImage(from: info.thumbnailURL) { [weak self] image in
+                self?.videoThumbnailImageView.image = image
+            }
+        } else {
+            VideoLinkService.shared.fetchVimeoThumbnail(videoId: info.videoId) { [weak self] thumbnailURL in
+                guard let thumbnailURL = thumbnailURL else { return }
+                ImageCacheService.shared.loadImage(from: thumbnailURL) { image in
+                    self?.videoThumbnailImageView.image = image
+                }
+            }
+        }
+    }
+    
+    /// Открытие видео в Safari
+    @objc private func videoThumbnailTapped() {
+        guard let urlString = videoURL, let url = URL(string: urlString) else { return }
+        UIApplication.shared.open(url)
+    }
+    
  
     private func updatePostCounts(_ post: Post) {
             likeCountLabel.text = "\(post.likesCount)"

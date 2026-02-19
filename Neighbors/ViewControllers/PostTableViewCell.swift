@@ -180,6 +180,10 @@ class PostTableViewCell: UITableViewCell {
         contentPreviewLabel.text = post.getContentPreview(maxLength: 100)
         likesLabel.text = "❤️ \(post.likesCount)"
         commentsLabel.text = "💬 \(post.commentsCount)"
+        // Индикатор видео
+        if !post.videoLinks.isEmpty {
+            commentsLabel.text = "💬 \(post.commentsCount)  🎬"
+        }
         
         // Превью первого изображения
         if let firstImageURL = post.images.first, URL(string: firstImageURL) != nil {
