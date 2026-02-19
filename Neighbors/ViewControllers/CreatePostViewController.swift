@@ -89,6 +89,54 @@ class CreatePostViewController: UIViewController {
         return collectionView
     }()
     
+    private let addVideoButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("🎬 Add Video (0/1)", for: .normal)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        button.contentHorizontalAlignment = .left
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+    /// Превью добавленного видео
+    private let videoPreviewView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.isHidden = true
+        return view
+    }()
+    
+    private let videoThumbnailImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        imageView.backgroundColor = .systemGray6
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    
+    /// Кнопка ▶ поверх превью
+    private let playIconView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.image = UIImage(systemName: "play.circle.fill")
+        imageView.tintColor = .white
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    
+    /// Кнопка удаления видео
+    private let deleteVideoButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        button.tintColor = .white
+        button.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        button.layer.cornerRadius = 12
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .medium)
         indicator.hidesWhenStopped = true
@@ -129,6 +177,18 @@ class CreatePostViewController: UIViewController {
     
     private let maxImages = 3
     
+    /// Информация о добавленном видео
+    private var videoInfo: VideoLinkInfo? {
+        didSet {
+            updateVideoButton()
+            updateVideoPreview()
+        }
+    }
+    
+    /// URL видео при редактировании существующего поста
+    private var existingVideoURL: String?
+    
+    
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
@@ -148,6 +208,12 @@ class CreatePostViewController: UIViewController {
             // Загружаем существующие изображения поста
             existingImageURLs = post.images
             loadExistingImages()
+            
+            // Загружаем существующее видео
+            if let videoURL = post.videoLinks.first {
+                existingVideoURL = videoURL
+                videoInfo = VideoLinkService.shared.parseVideoURL(videoURL)
+            }
         }
     }
     
@@ -170,6 +236,11 @@ class CreatePostViewController: UIViewController {
         view.addSubview(contentErrorLabel)
         view.addSubview(addPhotosButton)
         view.addSubview(photosCollectionView)
+        view.addSubview(addVideoButton)
+        view.addSubview(videoPreviewView)
+        videoPreviewView.addSubview(videoThumbnailImageView)
+        videoPreviewView.addSubview(playIconView)
+        videoPreviewView.addSubview(deleteVideoButton)
         view.addSubview(activityIndicator)
         
         NSLayoutConstraint.activate([
@@ -213,6 +284,32 @@ class CreatePostViewController: UIViewController {
             photosCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             photosCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             photosCollectionView.heightAnchor.constraint(equalToConstant: 100),
+            
+            // Add Video Button
+            addVideoButton.topAnchor.constraint(equalTo: photosCollectionView.bottomAnchor, constant: 12),
+            addVideoButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            addVideoButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            
+            // Video Preview
+            videoPreviewView.topAnchor.constraint(equalTo: addVideoButton.bottomAnchor, constant: 8),
+            videoPreviewView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            videoPreviewView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            videoPreviewView.heightAnchor.constraint(equalToConstant: 180),
+            
+            videoThumbnailImageView.topAnchor.constraint(equalTo: videoPreviewView.topAnchor),
+            videoThumbnailImageView.leadingAnchor.constraint(equalTo: videoPreviewView.leadingAnchor),
+            videoThumbnailImageView.trailingAnchor.constraint(equalTo: videoPreviewView.trailingAnchor),
+            videoThumbnailImageView.bottomAnchor.constraint(equalTo: videoPreviewView.bottomAnchor),
+            
+            playIconView.centerXAnchor.constraint(equalTo: videoPreviewView.centerXAnchor),
+            playIconView.centerYAnchor.constraint(equalTo: videoPreviewView.centerYAnchor),
+            playIconView.widthAnchor.constraint(equalToConstant: 50),
+            playIconView.heightAnchor.constraint(equalToConstant: 50),
+            
+            deleteVideoButton.topAnchor.constraint(equalTo: videoPreviewView.topAnchor, constant: 8),
+            deleteVideoButton.trailingAnchor.constraint(equalTo: videoPreviewView.trailingAnchor, constant: -8),
+            deleteVideoButton.widthAnchor.constraint(equalToConstant: 24),
+            deleteVideoButton.heightAnchor.constraint(equalToConstant: 24),
             
             // Activity Indicator
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -260,6 +357,10 @@ class CreatePostViewController: UIViewController {
         photosCollectionView.dataSource = self
         photosCollectionView.register(PhotoCell.self, forCellWithReuseIdentifier: PhotoCell.identifier)
         photosCollectionView.isHidden = true
+        
+        // Кнопка добавления видео
+        addVideoButton.addTarget(self, action: #selector(addVideoTapped), for: .touchUpInside)
+        deleteVideoButton.addTarget(self, action: #selector(deleteVideoTapped), for: .touchUpInside)
     }
     
     // MARK: - Actions
@@ -310,12 +411,14 @@ class CreatePostViewController: UIViewController {
             updatePost(post, title: title, content: content)
         } else {
             // Режим создания
-            if selectedImages.isEmpty {
-                // Без изображений — создаём как раньше
+            let videoLinks = videoInfo != nil ? [videoInfo!.originalURL] : []
+            
+            if selectedImages.isEmpty && videoLinks.isEmpty {
+                // Без медиа — создаём как раньше
                 viewModel.createPost(title: title, content: content)
             } else {
-                // С изображениями — новый метод
-                createPostWithImages(title: title, content: content, images: selectedImages)
+                // С медиа — метод с загрузкой
+                createPostWithMedia(title: title, content: content, images: selectedImages, videoLinks: videoLinks)
             }
         }
     }
@@ -354,7 +457,8 @@ class CreatePostViewController: UIViewController {
             let fields: [String: Any] = [
                 "title": title,
                 "content": content,
-                "images": existingImageURLs
+                "images": existingImageURLs,
+                "videoLinks": videoInfo != nil ? [videoInfo!.originalURL] : []
             ]
             
             FirestorePostService.shared.updatePost(postId: post.id, fields: fields) { [weak self] result in
@@ -392,7 +496,8 @@ class CreatePostViewController: UIViewController {
                         let fields: [String: Any] = [
                             "title": title,
                             "content": content,
-                            "images": allImageURLs
+                            "images": allImageURLs,
+                            "videoLinks": self.videoInfo != nil ? [self.videoInfo!.originalURL] : []
                         ]
                         
                         FirestorePostService.shared.updatePost(postId: post.id, fields: fields) { result in
@@ -428,7 +533,7 @@ class CreatePostViewController: UIViewController {
     
     // MARK: - Создание поста с изображениями
     
-    private func createPostWithImages(title: String, content: String, images: [UIImage]) {
+    private func createPostWithMedia(title: String, content: String, images: [UIImage], videoLinks: [String] = []) {
         // Валидация
         if let titleError = viewModel.validateTitle(title) {
             titleErrorLabel.text = titleError
@@ -461,7 +566,8 @@ class CreatePostViewController: UIViewController {
                     title: title,
                     content: content,
                     authorId: user.uid,
-                    authorNickname: user.nickname
+                    authorNickname: user.nickname,
+                    videoLinks: videoLinks
                 )
                 
                 // Загружаем изображения в Storage
@@ -476,7 +582,8 @@ class CreatePostViewController: UIViewController {
                                 content: content,
                                 authorId: user.uid,
                                 authorNickname: user.nickname,
-                                images: imageURLs
+                                images: imageURLs,
+                                videoLinks: videoLinks
                             )
                             
                             // Сохраняем в Firestore
@@ -564,6 +671,82 @@ class CreatePostViewController: UIViewController {
         titleErrorLabel.isHidden = true
         contentErrorLabel.isHidden = true
     }
+    
+    // MARK: - Видео
+    
+    @objc private func addVideoTapped() {
+        // Если видео уже добавлено — предлагаем заменить
+        let title = videoInfo != nil ? "Replace Video" : "Add Video"
+        
+        let alert = UIAlertController(
+            title: title,
+            message: "Paste a YouTube or Vimeo link",
+            preferredStyle: .alert
+        )
+        
+        alert.addTextField { textField in
+            textField.placeholder = "https://youtube.com/watch?v=..."
+            textField.keyboardType = .URL
+            textField.autocapitalizationType = .none
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Add", style: .default) { [weak self, weak alert] _ in
+            guard let urlString = alert?.textFields?.first?.text else { return }
+            self?.processVideoURL(urlString)
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    /// Валидация и обработка введённой ссылки
+    private func processVideoURL(_ urlString: String) {
+        guard let info = VideoLinkService.shared.parseVideoURL(urlString) else {
+            showError("Invalid video link. Please use a YouTube or Vimeo URL.")
+            return
+        }
+        
+        existingVideoURL = nil
+        videoInfo = info
+    }
+    
+    @objc private func deleteVideoTapped() {
+        existingVideoURL = nil
+        videoInfo = nil
+    }
+    
+    /// Обновляет текст кнопки Add Video
+    private func updateVideoButton() {
+        let count = videoInfo != nil ? 1 : 0
+        addVideoButton.setTitle("🎬 Add Video (\(count)/1)", for: .normal)
+    }
+    
+    /// Обновляет превью видео
+    private func updateVideoPreview() {
+        guard let info = videoInfo else {
+            videoPreviewView.isHidden = true
+            videoThumbnailImageView.image = nil
+            return
+        }
+        
+        videoPreviewView.isHidden = false
+        
+        if info.platform == .youtube {
+            // YouTube — превью загружается напрямую по URL
+            ImageCacheService.shared.loadImage(from: info.thumbnailURL) { [weak self] image in
+                self?.videoThumbnailImageView.image = image
+            }
+        } else {
+            // Vimeo — нужен запрос к oEmbed API
+            VideoLinkService.shared.fetchVimeoThumbnail(videoId: info.videoId) { [weak self] thumbnailURL in
+                guard let thumbnailURL = thumbnailURL else { return }
+                ImageCacheService.shared.loadImage(from: thumbnailURL) { image in
+                    self?.videoThumbnailImageView.image = image
+                }
+            }
+        }
+    }
+    
     
     // MARK: - Загрузка существующих изображений
     
