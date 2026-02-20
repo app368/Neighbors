@@ -61,6 +61,8 @@ class CommentTableViewCell: UITableViewCell {
     
     var onLikeTapped: (() -> Void)?
     
+    var onAuthorTapped: (() -> Void)?
+    
     // MARK: - Initialization
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -83,6 +85,15 @@ class CommentTableViewCell: UITableViewCell {
         contentView.addSubview(likeCountLabel)
         
         likeButton.addTarget(self, action: #selector(likeButtonTapped), for: .touchUpInside)
+        
+        // Tap на автора — переход в профиль
+        let authorTap = UITapGestureRecognizer(target: self, action: #selector(authorLabelTapped))
+        authorLabel.isUserInteractionEnabled = true
+        authorLabel.addGestureRecognizer(authorTap)
+        
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(authorLabelTapped))
+        avatarView.isUserInteractionEnabled = true
+        avatarView.addGestureRecognizer(avatarTap)
         
         NSLayoutConstraint.activate([
             
@@ -156,6 +167,10 @@ class CommentTableViewCell: UITableViewCell {
         }
         
         onLikeTapped?()
+    }
+    
+    @objc private func authorLabelTapped() {
+        onAuthorTapped?()
     }
 
 }

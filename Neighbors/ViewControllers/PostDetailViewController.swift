@@ -737,6 +737,12 @@ extension PostDetailViewController: UITableViewDataSource {
             }
         }
         
+        cell.onAuthorTapped = { [weak self] in
+            let isOwn = comment.authorId == FirebaseAuthService.shared.currentUser?.uid
+            let profileVC = ProfileViewController(userId: comment.authorId, isOwnProfile: isOwn)
+            self?.navigationController?.pushViewController(profileVC, animated: true)
+        }
+        
         return cell
     }
 }
