@@ -134,4 +134,17 @@ class FirestoreCommentService {
             }
         }
     }
+    
+    /// Подсчёт количества комментариев пользователя
+    /// - Parameters:
+    ///   - authorId: UID автора комментариев
+    ///   - completion: Callback с количеством
+    func fetchCommentsCount(forAuthorId authorId: String, completion: @escaping (Int) -> Void) {
+        db.collection(commentsCollection)
+            .whereField("authorId", isEqualTo: authorId)
+            .getDocuments { snapshot, _ in
+                completion(snapshot?.documents.count ?? 0)
+            }
+    }
+    
 }

@@ -1,6 +1,7 @@
 // ViewControllers/FeedViewController.swift
 
 import UIKit
+import FirebaseAuth
 
 /// Экран ленты постов
 class FeedViewController: UIViewController {
@@ -117,8 +118,7 @@ class FeedViewController: UIViewController {
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(createPostTapped))
         navigationItem.rightBarButtonItem = addButton
         
-        // Кнопка профиля/выхода (временно)
-        let profileButton = UIBarButtonItem(title: "Logout", style: .plain, target: self, action: #selector(logoutTapped))
+        let profileButton = UIBarButtonItem(image: UIImage(systemName: "person.circle"), style: .plain, target: self, action: #selector(profileTapped))
         navigationItem.leftBarButtonItem = profileButton
     }
     
@@ -145,36 +145,17 @@ class FeedViewController: UIViewController {
         present(navigationController, animated: true)
     }
     
-    
-    @objc private func logoutTapped() {
-        let alert = UIAlertController(title: "Logout",
-                                     message: "Are you sure you want to logout?",
-                                     preferredStyle: .alert)
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Logout", style: .destructive) { [weak self] _ in
-            self?.performLogout()
-        })
-        
-        present(alert, animated: true)
+    @objc private func profileTapped() {
+        guard let currentUser = FirebaseAuthService.shared.currentUser else { return }
+        let profileVC = ProfileViewController(userId: currentUser.uid, isOwnProfile: true)
+        navigationController?.pushViewController(profileVC, animated: true)
     }
     
-    private func performLogout() {
-        do {
-            try FirebaseAuthService.shared.signOut()
-            
-            // Переход на экран авторизации
-            if let window = view.window {
-                window.rootViewController = AuthViewController()
-            }
-        } catch {
-            let alert = UIAlertController(title: "Error",
-                                         message: "Failed to logout: \(error.localizedDescription)",
-                                         preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
-        }
-    }
+    
+
+    
+    
+    
     
     // MARK: - Navigation
         

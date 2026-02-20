@@ -1,6 +1,7 @@
 // ViewControllers/PostDetailViewController.swift
 
 import UIKit
+import FirebaseAuth
 
 /// Экран детального просмотра поста с комментариями
 class PostDetailViewController: UIViewController {
@@ -262,6 +263,15 @@ class PostDetailViewController: UIViewController {
         view.addSubview(activityIndicator)
         
         likeButton.addTarget(self, action: #selector(postLikeButtonTapped), for: .touchUpInside)
+        
+        // Tap на автора — открытие профиля
+        let authorTap = UITapGestureRecognizer(target: self, action: #selector(authorTapped))
+        authorLabel.isUserInteractionEnabled = true
+        authorLabel.addGestureRecognizer(authorTap)
+        
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(authorTapped))
+        avatarView.isUserInteractionEnabled = true
+        avatarView.addGestureRecognizer(avatarTap)
         
         tableViewHeightConstraint = commentsTableView.heightAnchor.constraint(equalToConstant: 0)
         
@@ -669,6 +679,13 @@ class PostDetailViewController: UIViewController {
                 }
             }
         }
+    }
+    
+    @objc private func authorTapped() {
+        let post = viewModel.post
+        let isOwn = post.authorId == FirebaseAuthService.shared.currentUser?.uid
+        let profileVC = ProfileViewController(userId: post.authorId, isOwnProfile: isOwn)
+        navigationController?.pushViewController(profileVC, animated: true)
     }
     
     // MARK: - State Handling

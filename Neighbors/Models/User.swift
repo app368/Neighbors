@@ -7,8 +7,9 @@ import FirebaseFirestore
 struct User {
     let uid: String
     let email: String
-    let nickname: String
+    var nickname: String
     let isAdmin: Bool
+    var location: String
     let createdAt: Date
     
     /// Инициализация из словаря Firestore
@@ -24,15 +25,17 @@ struct User {
         self.email = email
         self.nickname = nickname
         self.isAdmin = isAdmin
+        self.location = dictionary["location"] as? String ?? ""
         self.createdAt = timestamp.dateValue()
     }
     
     /// Инициализация для создания нового пользователя
-    init(uid: String, email: String, nickname: String, isAdmin: Bool = false) {
+    init(uid: String, email: String, nickname: String, isAdmin: Bool = false, location: String = "") {
         self.uid = uid
         self.email = email
         self.nickname = nickname
         self.isAdmin = isAdmin
+        self.location = location
         self.createdAt = Date()
     }
     
@@ -42,7 +45,16 @@ struct User {
             "email": email,
             "nickname": nickname,
             "isAdmin": isAdmin,
+            "location": location,
             "createdAt": Timestamp(date: createdAt)
         ]
+    }
+    
+    /// Форматированная дата регистрации
+    func formattedRegistrationDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: createdAt)
     }
 }
