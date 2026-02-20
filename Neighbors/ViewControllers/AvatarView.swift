@@ -66,17 +66,31 @@ class AvatarView: UIView {
     /// Генерация консистентного цвета на основе строки
     /// - Parameter string: Строка для генерации цвета
     /// - Returns: UIColor
+    /// Генерация консистентного цвета на основе строки
+        /// - Parameter string: Строка для генерации цвета
+        /// - Returns: UIColor
     private func generateColor(from string: String) -> UIColor {
-        // Используем хэш строки для генерации цвета
-        var hash = 0
+        // Используем DJB2 хеш для лучшего распределения
+        var hash: UInt64 = 5381
         for char in string.unicodeScalars {
-            hash = Int(char.value) + ((hash << 5) - hash)
+            hash = ((hash << 5) &+ hash) &+ UInt64(char.value)
         }
         
-        // Генерируем hue из хэша (0.0 - 1.0)
-        let hue = CGFloat(abs(hash) % 360) / 360.0
+        // Набор приятных цветов для аватаров
+        let colors: [UIColor] = [
+            UIColor(hue: 0.0,  saturation: 0.6, brightness: 0.8, alpha: 1.0),  // Красный
+            UIColor(hue: 0.05, saturation: 0.6, brightness: 0.8, alpha: 1.0),  // Оранжевый
+            UIColor(hue: 0.12, saturation: 0.6, brightness: 0.8, alpha: 1.0),  // Жёлто-оранжевый
+            UIColor(hue: 0.22, saturation: 0.6, brightness: 0.7, alpha: 1.0),  // Зелёный
+            UIColor(hue: 0.35, saturation: 0.6, brightness: 0.7, alpha: 1.0),  // Бирюзовый
+            UIColor(hue: 0.5,  saturation: 0.6, brightness: 0.7, alpha: 1.0),  // Голубой
+            UIColor(hue: 0.58, saturation: 0.6, brightness: 0.8, alpha: 1.0),  // Синий
+            UIColor(hue: 0.7,  saturation: 0.5, brightness: 0.8, alpha: 1.0),  // Фиолетовый
+            UIColor(hue: 0.8,  saturation: 0.5, brightness: 0.8, alpha: 1.0),  // Пурпурный
+            UIColor(hue: 0.9,  saturation: 0.5, brightness: 0.8, alpha: 1.0),  // Розовый
+        ]
         
-        // Используем высокую насыщенность и среднюю яркость для приятных цветов
-        return UIColor(hue: hue, saturation: 0.6, brightness: 0.8, alpha: 1.0)
+        let index = Int(hash % UInt64(colors.count))
+        return colors[index]
     }
 }
