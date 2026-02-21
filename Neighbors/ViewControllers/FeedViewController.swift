@@ -46,6 +46,14 @@ class FeedViewController: UIViewController {
     
     private let searchController = UISearchController(searchResultsController: nil)
     
+    /// I3.3: Индикатор загрузки внизу таблицы
+    private let footerSpinner: UIActivityIndicatorView = {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.hidesWhenStopped = true
+        spinner.frame = CGRect(x: 0, y: 0, width: 0, height: 44)
+        return spinner
+    }()
+    
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
@@ -95,6 +103,12 @@ class FeedViewController: UIViewController {
         // Pull-to-refresh
         refreshControl.addTarget(self, action: #selector(refreshPosts), for: .valueChanged)
         tableView.refreshControl = refreshControl
+        
+        // I3.1: Prefetching для плавной подгрузки
+        tableView.prefetchDataSource = self
+        
+        // I3.3: Footer spinner для индикации подгрузки
+        tableView.tableFooterView = footerSpinner
     }
     
     private func setupBindings() {
@@ -109,6 +123,7 @@ class FeedViewController: UIViewController {
         viewModel.onPostsUpdated = { [weak self] _ in
             DispatchQueue.main.async {
                 self?.tableView.reloadData()
+                self?.footerSpinner.stopAnimating()
             }
         }
     }
@@ -276,5 +291,23 @@ extension FeedViewController: UISearchResultsUpdating {
         // H2.1: Получаем текст из searchBar при каждом изменении
         let query = searchController.searchBar.text ?? ""
         viewModel.filterPosts(query: query)
+    }
+}
+
+// MARK: - UITableViewDataSourcePrefetching (суб-процесс I3)
+
+extension FeedViewController: UITableViewDataSourcePrefetching {
+    
+    func tableView(_ tableView: UITableView, prefetchRowsAt indexPaths: [IndexPath]) {
+        // I3.2: Триггер подгрузки при приближении к концу списка
+        let lastRow = viewModel.numberOfPosts - 1
+        guard lastRow >= 0 else { return }
+        
+        let needsMore = indexPaths.contains { $0.row >= lastRow - 3 }
+        
+        if needsMore && viewModel.hasMorePosts {
+            footerSpinner.startAnimating()
+            viewModel.loadMorePosts()
+        }
     }
 }

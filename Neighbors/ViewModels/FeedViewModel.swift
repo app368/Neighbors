@@ -30,6 +30,9 @@ class FeedViewModel {
     /// Флаг активного поиска
     private(set) var isSearching: Bool = false
     
+    /// I2.4: Флаг защиты от повторных запросов подгрузки
+    private var isLoadingMore: Bool = false
+    
     private(set) var state: FeedState = .idle {
         didSet {
             onStateChanged?(state)
@@ -110,6 +113,35 @@ class FeedViewModel {
                 onPostsUpdated?(posts)
             }
         }
+    
+    // MARK: - Pagination (суб-процесс I2)
+    
+    /// I2.2: Подгрузка следующей порции постов
+    func loadMorePosts() {
+        // I2.4: Защита от повторных запросов
+        guard !isLoadingMore, !isSearching, postService.hasMorePosts else { return }
+        
+        isLoadingMore = true
+        
+        postService.fetchMorePosts { [weak self] result in
+            self?.isLoadingMore = false
+            
+            switch result {
+            case .success(let newPosts):
+                guard !newPosts.isEmpty else { return }
+                // I2.3: Добавляем к существующим, а не заменяем
+                self?.posts.append(contentsOf: newPosts)
+                
+            case .failure(let error):
+                self?.state = .error(error.localizedDescription)
+            }
+        }
+    }
+    
+    /// Есть ли ещё посты для подгрузки
+    var hasMorePosts: Bool {
+        return postService.hasMorePosts
+    }
     
     // MARK: - Search (суб-процесс H)
     

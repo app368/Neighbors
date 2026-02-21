@@ -12,6 +12,18 @@ class FirestorePostService {
     private let db = Firestore.firestore()
     private let postsCollection = "posts"
     
+    // MARK: - Pagination (суб-процесс I1)
+    
+    /// Курсор — последний загруженный документ для пагинации
+    private var lastDocument: DocumentSnapshot?
+    
+    /// Флаг: есть ли ещё посты для подгрузки
+    private(set) var hasMorePosts: Bool = true
+    
+    /// Количество постов на одну страницу
+    private let pageSize = 20
+    
+    
     /// Создание нового поста
     /// - Parameters:
     ///   - post: Модель поста
@@ -28,12 +40,17 @@ class FirestorePostService {
             }
     }
     
-    /// Загрузка всех постов (с сортировкой по дате создания)
+    /// I1.3: Загрузка первой страницы постов (сброс курсора)
     /// - Parameter completion: Callback с результатом (массив постов или ошибка)
     func fetchPosts(completion: @escaping (Result<[Post], Error>) -> Void) {
+        // Сброс курсора — начинаем с начала
+        lastDocument = nil
+        hasMorePosts = true
+        
         db.collection(postsCollection)
-            .order(by: "createdAt", descending: true) // Новые посты сверху
-            .getDocuments { snapshot, error in
+            .order(by: "createdAt", descending: true)
+            .limit(to: pageSize)
+            .getDocuments { [weak self] snapshot, error in
                 if let error = error {
                     completion(.failure(error))
                     return
@@ -44,7 +61,48 @@ class FirestorePostService {
                     return
                 }
                 
-                // Парсинг документов в модели Post
+                // I1.2: Сохраняем курсор для следующей страницы
+                self?.lastDocument = documents.last
+                
+                // I1.5: Если получили меньше pageSize — больше данных нет
+                self?.hasMorePosts = documents.count >= (self?.pageSize ?? 20)
+                
+                let posts = documents.compactMap { document -> Post? in
+                    return Post(dictionary: document.data(), id: document.documentID)
+                }
+                
+                completion(.success(posts))
+            }
+    }
+    
+    /// I1.4: Загрузка следующей страницы постов (от курсора)
+    /// - Parameter completion: Callback с результатом (массив постов или ошибка)
+    func fetchMorePosts(completion: @escaping (Result<[Post], Error>) -> Void) {
+        // Если нет курсора или данных больше нет — выходим
+        guard let lastDocument = lastDocument, hasMorePosts else {
+            completion(.success([]))
+            return
+        }
+        
+        db.collection(postsCollection)
+            .order(by: "createdAt", descending: true)
+            .limit(to: pageSize)
+            .start(afterDocument: lastDocument)
+            .getDocuments { [weak self] snapshot, error in
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                
+                guard let documents = snapshot?.documents else {
+                    completion(.success([]))
+                    return
+                }
+                
+                // Обновляем курсор
+                self?.lastDocument = documents.last
+                self?.hasMorePosts = documents.count >= (self?.pageSize ?? 20)
+                
                 let posts = documents.compactMap { document -> Post? in
                     return Post(dictionary: document.data(), id: document.documentID)
                 }
