@@ -163,7 +163,7 @@ class AuthViewModel {
                 self?.state = .success
                 
             case .failure(let error):
-                self?.state = .error("Ошибка сохранения данных: \(error.localizedDescription)")
+                self?.state = .error(AppError.from(error).userMessage)
             }
         }
     }
@@ -177,27 +177,14 @@ class AuthViewModel {
                 self?.state = .success
                 
             case .failure(let error):
-                self?.state = .error("Ошибка загрузки данных: \(error.localizedDescription)")
+                self?.state = .error(AppError.from(error).userMessage)
             }
         }
     }
     
     /// Обработка ошибок Firebase для понятных сообщений пользователю
+
     private func handleFirebaseError(_ error: Error) -> String {
-        let nsError = error as NSError
-        
-        // Коды ошибок Firebase Auth
-        switch nsError.code {
-        case 17007: // ERROR_EMAIL_ALREADY_IN_USE
-            return "Пользователь с таким email уже существует"
-        case 17008, 17011: // ERROR_INVALID_EMAIL, ERROR_USER_NOT_FOUND
-            return "Неверный email или пароль"
-        case 17009: // ERROR_WRONG_PASSWORD
-            return "Неверный пароль"
-        case 17020: // ERROR_NETWORK_REQUEST_FAILED
-            return "Нет подключения к интернету"
-        default:
-            return error.localizedDescription
-        }
+        return AppError.from(error).userMessage
     }
 }

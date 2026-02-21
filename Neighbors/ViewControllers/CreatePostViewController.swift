@@ -478,7 +478,7 @@ class CreatePostViewController: UIViewController {
                         self?.dismiss(animated: true)
                         
                     case .failure(let error):
-                        self?.showError("Failed to update post: \(error.localizedDescription)")
+                        self?.presentError(error)
                     }
                 }
             }
@@ -516,7 +516,7 @@ class CreatePostViewController: UIViewController {
                                     self.dismiss(animated: true)
                                     
                                 case .failure(let error):
-                                    self.showError("Failed to update post: \(error.localizedDescription)")
+                                    self.presentError(error)
                                 }
                             }
                         }
@@ -524,7 +524,7 @@ class CreatePostViewController: UIViewController {
                     case .failure(let error):
                         self.navigationItem.rightBarButtonItem?.isEnabled = true
                         self.activityIndicator.stopAnimating()
-                        self.showError("Failed to upload images: \(error.localizedDescription)")
+                        self.presentError(error)
                     }
                 }
             }
@@ -598,7 +598,7 @@ class CreatePostViewController: UIViewController {
                                         self?.showPostDetail(post)
                                         
                                     case .failure(let error):
-                                        self?.showError("Failed to create post: \(error.localizedDescription)")
+                                        self?.presentError(error)
                                     }
                                 }
                             }
@@ -606,7 +606,7 @@ class CreatePostViewController: UIViewController {
                         case .failure(let error):
                             self?.navigationItem.rightBarButtonItem?.isEnabled = true
                             self?.activityIndicator.stopAnimating()
-                            self?.showError("Failed to upload images: \(error.localizedDescription)")
+                            self?.presentError(error)
                         }
                     }
                 }
@@ -615,7 +615,7 @@ class CreatePostViewController: UIViewController {
                 DispatchQueue.main.async {
                     self?.navigationItem.rightBarButtonItem?.isEnabled = true
                     self?.activityIndicator.stopAnimating()
-                    self?.showError("Failed to get user data: \(error.localizedDescription)")
+                    self?.presentError(error)
                 }
             }
         }
