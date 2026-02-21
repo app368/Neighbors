@@ -44,6 +44,8 @@ class FeedViewController: UIViewController {
     
     private let viewModel = FeedViewModel()
     
+    private let searchController = UISearchController(searchResultsController: nil)
+    
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
@@ -120,6 +122,13 @@ class FeedViewController: UIViewController {
         
         let profileButton = UIBarButtonItem(image: UIImage(systemName: "person.circle"), style: .plain, target: self, action: #selector(profileTapped))
         navigationItem.leftBarButtonItem = profileButton
+        
+        // H1: Настройка поиска
+        searchController.searchResultsUpdater = self
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Search posts..."
+        navigationItem.searchController = searchController
+        definesPresentationContext = true
     }
     
     // MARK: - Actions
@@ -195,8 +204,14 @@ class FeedViewController: UIViewController {
             
         case .empty:
             activityIndicator.stopAnimating()
-            emptyStateLabel.isHidden = false
-            tableView.isHidden = true
+            // При активном поиске не показываем empty state — таблица покажет "Ничего не найдено"
+            if viewModel.isSearching {
+                emptyStateLabel.isHidden = true
+                tableView.isHidden = false
+            } else {
+                emptyStateLabel.isHidden = false
+                tableView.isHidden = true
+            }
             
         case .error(let message):
             activityIndicator.stopAnimating()
@@ -230,6 +245,15 @@ extension FeedViewController: UITableViewDataSource {
         cell.configure(with: post)
         return cell
     }
+    
+    func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        // H4.2: Сообщение при пустом результате поиска
+        if viewModel.isSearching && viewModel.numberOfPosts == 0 {
+            let query = searchController.searchBar.text ?? ""
+            return "Nothing found for \"\(query)\""
+        }
+        return nil
+    }
 }
 
 // MARK: - UITableViewDelegate
@@ -242,4 +266,15 @@ extension FeedViewController: UITableViewDelegate {
             guard let post = viewModel.post(at: indexPath.row) else { return }
             openPostDetail(post)
         }
+}
+
+// MARK: - UISearchResultsUpdating (суб-процесс H)
+
+extension FeedViewController: UISearchResultsUpdating {
+    
+    func updateSearchResults(for searchController: UISearchController) {
+        // H2.1: Получаем текст из searchBar при каждом изменении
+        let query = searchController.searchBar.text ?? ""
+        viewModel.filterPosts(query: query)
+    }
 }
