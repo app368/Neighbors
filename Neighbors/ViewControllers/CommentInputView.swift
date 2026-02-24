@@ -61,15 +61,10 @@ class CommentInputView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
-        setupKeyboardObservers()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-    
-    deinit {
-        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Setup
@@ -117,57 +112,6 @@ class CommentInputView: UIView {
             sendButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
             sendButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 50)
         ])
-    }
-    
-    private func setupKeyboardObservers() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(keyboardWillShow),
-            name: UIResponder.keyboardWillShowNotification,
-            object: nil
-        )
-        
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(keyboardWillHide),
-            name: UIResponder.keyboardWillHideNotification,
-            object: nil
-        )
-    }
-    
-    // MARK: - Keyboard Handling
-    
-    @objc private func keyboardWillShow(_ notification: Notification) {
-        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-        
-        let keyboardHeight = keyboardFrame.height
-        
-        // Обновляем constraint для поднятия view над клавиатурой
-        if let superview = superview {
-            superview.constraints.forEach { constraint in
-                if constraint.firstItem as? UIView == self && constraint.firstAnchor == bottomAnchor {
-                    constraint.constant = -keyboardHeight + superview.safeAreaInsets.bottom
-                }
-            }
-        }
-        
-        UIView.animate(withDuration: 0.3) {
-            self.superview?.layoutIfNeeded()
-        }
-    }
-    
-    @objc private func keyboardWillHide(_ notification: Notification) {
-        if let superview = superview {
-            superview.constraints.forEach { constraint in
-                if constraint.firstItem as? UIView == self && constraint.firstAnchor == bottomAnchor {
-                    constraint.constant = 0
-                }
-            }
-        }
-        
-        UIView.animate(withDuration: 0.3) {
-            self.superview?.layoutIfNeeded()
-        }
     }
     
     // MARK: - Actions

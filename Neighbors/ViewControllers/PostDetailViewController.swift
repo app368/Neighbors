@@ -173,10 +173,9 @@ class PostDetailViewController: UIViewController {
         return label
     }()
     
-    
-    
-    
     private var tableViewHeightConstraint: NSLayoutConstraint!
+    
+    private var commentInputBottomConstraint: NSLayoutConstraint!
     
     private let commentInputView: CommentInputView = {
         let view = CommentInputView()
@@ -377,13 +376,16 @@ class PostDetailViewController: UIViewController {
             // Comment Input
             commentInputView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             commentInputView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            commentInputView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             commentInputView.heightAnchor.constraint(greaterThanOrEqualToConstant: 60),
             
             // Activity Indicator
             activityIndicator.centerXAnchor.constraint(equalTo: commentsTableView.centerXAnchor),
             activityIndicator.topAnchor.constraint(equalTo: commentsTableView.topAnchor, constant: 20)
         ])
+        
+        commentInputBottomConstraint = commentInputView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        commentInputBottomConstraint.isActive = true
+        
         // Начальная высота галереи — 0 (обновится в loadPostImages)
         imagesScrollViewHeightConstraint = imagesScrollView.heightAnchor.constraint(equalToConstant: 0)
         imagesScrollViewHeightConstraint.isActive = true
@@ -720,9 +722,11 @@ class PostDetailViewController: UIViewController {
         
         let keyboardHeight = keyboardFrame.height
         
-        // Только поднимаем контент scrollView, чтобы комментарии не прятались за клавиатурой
-        // CommentInputView сам поднимает себя через свой keyboardWillShow
+        // Поднимаем commentInputView над клавиатурой
+        commentInputBottomConstraint.constant = -keyboardHeight
+        
         UIView.animate(withDuration: duration) {
+            self.view.layoutIfNeeded()
             self.scrollView.contentInset.bottom = keyboardHeight
             self.scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight
         }
@@ -731,11 +735,15 @@ class PostDetailViewController: UIViewController {
     @objc private func keyboardWillHide(_ notification: Notification) {
         guard let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else { return }
         
+        commentInputBottomConstraint.constant = 0
+        
         UIView.animate(withDuration: duration) {
+            self.view.layoutIfNeeded()
             self.scrollView.contentInset.bottom = 0
             self.scrollView.verticalScrollIndicatorInsets.bottom = 0
         }
     }
+    
     
     // MARK: - State Handling
     
