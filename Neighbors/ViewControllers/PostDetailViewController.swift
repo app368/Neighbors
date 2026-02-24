@@ -230,6 +230,10 @@ class PostDetailViewController: UIViewController {
             
             // Загрузка комментариев
             viewModel.loadComments()
+        
+        // Подписка на появление/скрытие клавиатуры
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         }
     
     // MARK: - Setup
@@ -261,6 +265,11 @@ class PostDetailViewController: UIViewController {
         
         view.addSubview(commentInputView)
         view.addSubview(activityIndicator)
+        
+        // Скрытие клавиатуры при тапе на scrollView
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tapGesture.cancelsTouchesInView = false
+        scrollView.addGestureRecognizer(tapGesture)
         
         likeButton.addTarget(self, action: #selector(postLikeButtonTapped), for: .touchUpInside)
         
@@ -524,21 +533,32 @@ class PostDetailViewController: UIViewController {
         guard let urlString = videoURL, let url = URL(string: urlString) else { return }
         UIApplication.shared.open(url)
     }
-    
- 
+        
     private func updatePostCounts(_ post: Post) {
-            likeCountLabel.text = "\(post.likesCount)"
-            commentCountLabel.text = "💬 \(post.commentsCount)"
-            
-            // Уведомляем FeedViewController об изменении счётчиков
-            onPostUpdated?(post)
-        }
-    
-    
+        likeCountLabel.text = "\(post.likesCount)"
+        
+        // Иконка комментариев: заполненная зелёная при >0, контурная при 0
+        let commentIconName = post.commentsCount > 0 ? "bubble.left.fill" : "bubble.left"
+        let attachment = NSTextAttachment()
+        attachment.image = UIImage(systemName: commentIconName)?.withTintColor(.systemGreen, renderingMode: .alwaysOriginal)
+        attachment.bounds = CGRect(x: 0, y: -2, width: 16, height: 16)
+        let iconString = NSAttributedString(attachment: attachment)
+        let countString = NSAttributedString(string: " \(post.commentsCount)")
+        let combined = NSMutableAttributedString()
+        combined.append(iconString)
+        combined.append(countString)
+        commentCountLabel.attributedText = combined
+        
+        // Уведомляем FeedViewController об изменении счётчиков
+        onPostUpdated?(post)
+    }
     
     private func updatePostLikeButton() {
         let isLiked = viewModel.isLiked(targetId: viewModel.post.id)
-        let imageName = isLiked ? "heart.fill" : "heart"
+        let hasLikes = viewModel.post.likesCount > 0
+        
+        // Заполненное сердечко если: я лайкнул ИЛИ есть лайки от других
+        let imageName = (isLiked || hasLikes) ? "heart.fill" : "heart"
         likeButton.setImage(UIImage(systemName: imageName), for: .normal)
     }
     
@@ -576,7 +596,6 @@ class PostDetailViewController: UIViewController {
             }
         }
     }
-        // ========== КОНЕЦ ==========
     
     
     
@@ -667,6 +686,7 @@ class PostDetailViewController: UIViewController {
                 switch result {
                 case .success:
                     self?.commentInputView.clearInput()
+                    self?.dismissKeyboard()
                     
                 case .failure(let error):
                     let alert = UIAlertController(
@@ -686,6 +706,35 @@ class PostDetailViewController: UIViewController {
         let isOwn = post.authorId == FirebaseAuthService.shared.currentUser?.uid
         let profileVC = ProfileViewController(userId: post.authorId, isOwnProfile: isOwn)
         navigationController?.pushViewController(profileVC, animated: true)
+    }
+    
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+    
+    // MARK: - Keyboard Handling
+    
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else { return }
+        
+        let keyboardHeight = keyboardFrame.height
+        
+        // Только поднимаем контент scrollView, чтобы комментарии не прятались за клавиатурой
+        // CommentInputView сам поднимает себя через свой keyboardWillShow
+        UIView.animate(withDuration: duration) {
+            self.scrollView.contentInset.bottom = keyboardHeight
+            self.scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight
+        }
+    }
+    
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        guard let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else { return }
+        
+        UIView.animate(withDuration: duration) {
+            self.scrollView.contentInset.bottom = 0
+            self.scrollView.verticalScrollIndicatorInsets.bottom = 0
+        }
     }
     
     // MARK: - State Handling

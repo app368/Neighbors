@@ -66,6 +66,14 @@ class PostTableViewCell: UITableViewCell {
         return label
     }()
     
+    private let commentsIconView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.tintColor = .systemGreen
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    
     private let statsStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
@@ -116,6 +124,7 @@ class PostTableViewCell: UITableViewCell {
 
         
         statsStackView.addArrangedSubview(likesLabel)
+        statsStackView.addArrangedSubview(commentsIconView)
         statsStackView.addArrangedSubview(commentsLabel)
 
         
@@ -148,6 +157,10 @@ class PostTableViewCell: UITableViewCell {
             dateLabel.centerYAnchor.constraint(equalTo: authorLabel.centerYAnchor),
             dateLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             
+            // Comment Icon
+            commentsIconView.widthAnchor.constraint(equalToConstant: 18),
+            commentsIconView.heightAnchor.constraint(equalToConstant: 18),
+            
             // Content Preview
             contentPreviewLabel.topAnchor.constraint(equalTo: authorLabel.bottomAnchor, constant: 8),
             contentPreviewLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -178,12 +191,18 @@ class PostTableViewCell: UITableViewCell {
         authorLabel.text = post.authorNickname
         dateLabel.text = post.formattedDate()
         contentPreviewLabel.text = post.getContentPreview(maxLength: 100)
-        likesLabel.text = "❤️ \(post.likesCount)"
-        commentsLabel.text = "💬 \(post.commentsCount)"
-        // Индикатор видео
-        if !post.videoLinks.isEmpty {
-            commentsLabel.text = "💬 \(post.commentsCount)  🎬"
-        }
+        // Иконка лайков: пустое сердечко при 0, закрашенное при >0
+        let heartIcon = post.likesCount > 0 ? "♥️" : "🤍"
+        likesLabel.text = "\(heartIcon) \(post.likesCount)"
+        
+        
+        // Иконка комментариев: заполненная при >0, контурная при 0
+        let commentIconName = post.commentsCount > 0 ? "bubble.left.fill" : "bubble.left"
+        commentsIconView.image = UIImage(systemName: commentIconName)
+        
+        let videoSuffix = !post.videoLinks.isEmpty ? "  🎬" : ""
+        commentsLabel.text = "\(post.commentsCount)\(videoSuffix)"
+        
         
         // Превью первого изображения
         if let firstImageURL = post.images.first, URL(string: firstImageURL) != nil {
