@@ -3,12 +3,11 @@
 import Foundation
 import FirebaseAuth
 
-/// Состояния процесса создания поста
 enum CreatePostState {
-    case idle           // Ожидание ввода
-    case publishing     // Процесс публикации
-    case success        // Успешная публикация
-    case error(String)  // Ошибка
+    case idle              // Ожидание ввода
+    case publishing        // Процесс публикации
+    case success(Post)     // Успешная публикация — передаём созданный пост
+    case error(String)     // Ошибка
 }
 
 /// ViewModel для экрана создания поста
@@ -119,7 +118,7 @@ class CreatePostViewModel {
         postService.createPost(post) { [weak self] result in
             switch result {
             case .success:
-                self?.state = .success
+                self?.state = .success(post)
                 
             case .failure(let error):
                 self?.state = .error("Failed to publish post: \(error.localizedDescription)")

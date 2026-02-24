@@ -634,15 +634,15 @@ class CreatePostViewController: UIViewController {
             activityIndicator.startAnimating()
             dismissKeyboard()
             
-        case .success:
+        case .success(let post):
             navigationItem.rightBarButtonItem?.isEnabled = true
             activityIndicator.stopAnimating()
             
-            // Вызываем callback для обновления ленты
+            // Обновляем ленту
             onPostCreated?()
             
-            // Закрываем экран
-            dismiss(animated: true)
+            // Показываем карточку поста (как при создании с медиа)
+            showPostDetail(post)
             
         case .error(let message):
             navigationItem.rightBarButtonItem?.isEnabled = true
