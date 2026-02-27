@@ -10,6 +10,7 @@ struct Post {
     var content: String
     let authorId: String
     let authorNickname: String
+    let authorIsAdmin: Bool
     var images: [String]
     let videoLinks: [String]
     var likesCount: Int
@@ -32,11 +33,15 @@ struct Post {
             return nil
         }
         
+        // Обратная совместимость: старые посты без этого поля получают false
+        let authorIsAdmin = dictionary["authorIsAdmin"] as? Bool ?? false
+        
         self.id = id
         self.title = title
         self.content = content
         self.authorId = authorId
         self.authorNickname = authorNickname
+        self.authorIsAdmin = authorIsAdmin
         self.images = images
         self.videoLinks = videoLinks
         self.likesCount = likesCount
@@ -51,6 +56,7 @@ struct Post {
          content: String,
          authorId: String,
          authorNickname: String,
+         authorIsAdmin: Bool = false,
          images: [String] = [],
          videoLinks: [String] = [],
          likesCount: Int = 0,
@@ -60,6 +66,7 @@ struct Post {
         self.content = content
         self.authorId = authorId
         self.authorNickname = authorNickname
+        self.authorIsAdmin = authorIsAdmin
         self.images = images
         self.videoLinks = videoLinks
         self.likesCount = likesCount
@@ -75,6 +82,7 @@ struct Post {
             "content": content,
             "authorId": authorId,
             "authorNickname": authorNickname,
+            "authorIsAdmin": authorIsAdmin,
             "images": images,
             "videoLinks": videoLinks,
             "likesCount": likesCount,

@@ -140,7 +140,13 @@ class CommentTableViewCell: UITableViewCell {
     ///   - isLiked: Залайкан ли комментарий текущим пользователем
     func configure(with comment: Comment, isLiked: Bool) {
         avatarView.configure(with: comment.authorNickname, fontSize: 14)
-        authorLabel.text = comment.authorNickname
+        
+        // Admin or User Label Badge
+        if comment.authorIsAdmin {
+            authorLabel.text = comment.authorNickname + " 🛡️"
+        } else {
+            authorLabel.text = comment.authorNickname
+        }
         dateLabel.text = comment.formattedDate()
         contentLabel.text = comment.content
         likeCountLabel.text = "\(comment.likesCount)"

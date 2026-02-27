@@ -68,7 +68,6 @@ class PostDetailViewController: UIViewController {
         return label
     }()
     
-    // ========== ПОСЛЕ contentLabel ==========
     
     private let imagesScrollView: UIScrollView = {
         let scrollView = UIScrollView()
@@ -444,7 +443,15 @@ class PostDetailViewController: UIViewController {
         let post = viewModel.post
         avatarView.configure(with: post.authorNickname, fontSize: 20)
         titleLabel.text = post.title
-        authorLabel.text = post.authorNickname
+        
+        
+        if post.authorIsAdmin {
+            authorLabel.text = post.authorNickname + " 🛡️"
+        } else {
+            authorLabel.text = post.authorNickname
+        }
+        
+        
         dateLabel.text = post.formattedDate()
         contentLabel.text = post.content
         updatePostCounts(post)

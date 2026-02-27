@@ -188,9 +188,17 @@ class PostTableViewCell: UITableViewCell {
     func configure(with post: Post) {
         avatarView.configure(with: post.authorNickname, fontSize: 18)
         titleLabel.text = post.title
-        authorLabel.text = post.authorNickname
+        
+        // Никнеймы и иконка админа
+        if post.authorIsAdmin {
+            authorLabel.text = post.authorNickname + " 🛡️"
+        } else {
+            authorLabel.text = post.authorNickname
+        }
+        
         dateLabel.text = post.formattedDate()
         contentPreviewLabel.text = post.getContentPreview(maxLength: 100)
+        
         // Иконка лайков: пустое сердечко при 0, закрашенное при >0
         let heartIcon = post.likesCount > 0 ? "♥️" : "🤍"
         likesLabel.text = "\(heartIcon) \(post.likesCount)"
@@ -200,6 +208,7 @@ class PostTableViewCell: UITableViewCell {
         let commentIconName = post.commentsCount > 0 ? "bubble.left.fill" : "bubble.left"
         commentsIconView.image = UIImage(systemName: commentIconName)
         
+        // Video link
         let videoSuffix = !post.videoLinks.isEmpty ? "  🎬" : ""
         commentsLabel.text = "\(post.commentsCount)\(videoSuffix)"
         
@@ -237,5 +246,4 @@ class PostTableViewCell: UITableViewCell {
         statsTopToPreviewConstraint.isActive = false
         statsTopToContentConstraint.isActive = true
     }
-
 }

@@ -567,6 +567,7 @@ class CreatePostViewController: UIViewController {
                     content: content,
                     authorId: user.uid,
                     authorNickname: user.nickname,
+                    authorIsAdmin: user.isAdmin,
                     videoLinks: videoLinks
                 )
                 
@@ -582,6 +583,7 @@ class CreatePostViewController: UIViewController {
                                 content: content,
                                 authorId: user.uid,
                                 authorNickname: user.nickname,
+                                authorIsAdmin: user.isAdmin,
                                 images: imageURLs,
                                 videoLinks: videoLinks
                             )

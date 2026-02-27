@@ -290,7 +290,12 @@ class ProfileViewController: UIViewController {
     /// Заполняем UI данными пользователя
     private func configureProfile(_ user: User) {
         avatarView.configure(with: user.nickname, fontSize: 32)
-        nicknameLabel.text = user.nickname
+        
+        if user.isAdmin {
+            nicknameLabel.text = user.nickname + " 🛡️"
+        } else {
+            nicknameLabel.text = user.nickname
+        }
         registrationDateLabel.text = "Member since \(user.formattedRegistrationDate())"
         
         // Локация — показываем только если заполнена
@@ -400,7 +405,13 @@ class ProfileViewController: UIViewController {
             
             self.updateUserField("nickname", value: newNickname) {
                 self.user?.nickname = newNickname
-                self.nicknameLabel.text = newNickname
+                
+                if self.user?.isAdmin == true {
+                    self.nicknameLabel.text = newNickname + " 🛡️"
+                } else {
+                    self.nicknameLabel.text = newNickname
+                }
+                
                 self.avatarView.configure(with: newNickname, fontSize: 32)
             }
         })

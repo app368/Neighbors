@@ -10,6 +10,7 @@ struct Comment {
     let content: String
     let authorId: String
     let authorNickname: String
+    let authorIsAdmin: Bool
     let images: [String]
     let videoLinks: [String]
     var likesCount: Int
@@ -30,11 +31,15 @@ struct Comment {
             return nil
         }
         
+        // Обратная совместимость: старые комментарии без этого поля получают false
+        let authorIsAdmin = dictionary["authorIsAdmin"] as? Bool ?? false
+        
         self.id = id
         self.postId = postId
         self.content = content
         self.authorId = authorId
         self.authorNickname = authorNickname
+        self.authorIsAdmin = authorIsAdmin
         self.images = images
         self.videoLinks = videoLinks
         self.likesCount = likesCount
@@ -48,6 +53,7 @@ struct Comment {
          content: String,
          authorId: String,
          authorNickname: String,
+         authorIsAdmin: Bool = false,
          images: [String] = [],
          videoLinks: [String] = [],
          likesCount: Int = 0) {
@@ -56,6 +62,7 @@ struct Comment {
         self.content = content
         self.authorId = authorId
         self.authorNickname = authorNickname
+        self.authorIsAdmin = authorIsAdmin
         self.images = images
         self.videoLinks = videoLinks
         self.likesCount = likesCount
@@ -70,6 +77,7 @@ struct Comment {
             "content": content,
             "authorId": authorId,
             "authorNickname": authorNickname,
+            "authorIsAdmin": authorIsAdmin,
             "images": images,
             "videoLinks": videoLinks,
             "likesCount": likesCount,

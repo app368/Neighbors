@@ -99,7 +99,8 @@ class CreatePostViewModel {
                     title: title,
                     content: content,
                     authorId: user.uid,
-                    authorNickname: user.nickname
+                    authorNickname: user.nickname,
+                    authorIsAdmin: user.isAdmin
                 )
                 
                 // Сохранение в Firestore

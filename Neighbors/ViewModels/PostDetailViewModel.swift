@@ -72,19 +72,13 @@ class PostDetailViewModel {
     
     /// Проверка прав доступа (автор поста или админ)
     func canManagePost() -> Bool {
-            print("DEBUG canManagePost:")
-            print("  currentUser: \(String(describing: currentUser))")
-            print("  currentUser.uid: \(currentUser?.uid ?? "nil")")
-            print("  post.authorId: \(post.authorId)")
-            print("  isAdmin: \(currentUser?.isAdmin ?? false)")
             
             guard let currentUser = currentUser else {
-                print("  Result: false (no currentUser)")
                 return false
             }
             
             let result = currentUser.uid == post.authorId || currentUser.isAdmin
-            print("  Result: \(result)")
+            
             return result
         }
     
@@ -135,7 +129,7 @@ class PostDetailViewModel {
     func createComment(content: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let currentUser = currentUser else {
             completion(.failure(NSError(domain: "AuthError", code: -1,
-                                       userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
+                                        userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
             return
         }
         
@@ -143,7 +137,8 @@ class PostDetailViewModel {
             postId: post.id,
             content: content,
             authorId: currentUser.uid,
-            authorNickname: currentUser.nickname
+            authorNickname: currentUser.nickname,
+            authorIsAdmin: currentUser.isAdmin
         )
         
         commentService.createComment(comment) { [weak self] result in
