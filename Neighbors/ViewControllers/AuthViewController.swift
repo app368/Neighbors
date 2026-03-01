@@ -9,7 +9,7 @@ class AuthViewController: UIViewController {
     
     private let logoLabel: UILabel = {
         let label = UILabel()
-        label.text = "Соседи"
+        label.text = "Neighbors"
         label.font = UIFont.systemFont(ofSize: 36, weight: .bold)
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -18,7 +18,7 @@ class AuthViewController: UIViewController {
     
     private let welcomeLabel: UILabel = {
         let label = UILabel()
-        label.text = "Добро пожаловать в сообщество"
+        label.text = "Welcome to the community"
         label.font = UIFont.systemFont(ofSize: 16, weight: .regular)
         label.textColor = .gray
         label.textAlignment = .center
@@ -27,7 +27,7 @@ class AuthViewController: UIViewController {
     }()
     
     private let modeSegmentedControl: UISegmentedControl = {
-        let items = ["Вход", "Регистрация"]
+        let items = ["Sign In", "Sign Up"]
         let control = UISegmentedControl(items: items)
         control.selectedSegmentIndex = 0
         control.translatesAutoresizingMaskIntoConstraints = false
@@ -98,7 +98,7 @@ class AuthViewController: UIViewController {
     
     private let actionButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Войти", for: .normal)
+        button.setTitle("Sign In", for: .normal)
         button.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
         button.backgroundColor = .systemBlue
         button.setTitleColor(.white, for: .normal)
@@ -240,7 +240,7 @@ class AuthViewController: UIViewController {
         nicknameErrorLabel.isHidden = true
         
         // Изменить текст кнопки
-        actionButton.setTitle(isRegistrationMode ? "Зарегистрироваться" : "Войти", for: .normal)
+        actionButton.setTitle(isRegistrationMode ? "Sign Up" : "Sign In", for: .normal)
         
         // Очистить ошибки
         clearErrors()
