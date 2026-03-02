@@ -74,36 +74,55 @@ class FirestoreLikeService {
     ///   - userId: ID пользователя
     ///   - targetIds: Массив ID объектов
     ///   - completion: Callback с результатом (словарь targetId -> Like)
+    /// Лимит Firestore для оператора `in` в запросах
+    private static let firestoreInLimit = 30
+
     func fetchLikes(userId: String, targetIds: [String], completion: @escaping (Result<[String: Like], Error>) -> Void) {
         guard !targetIds.isEmpty else {
             completion(.success([:]))
             return
         }
-        
-        db.collection(likesCollection)
-            .whereField("userId", isEqualTo: userId)
-            .whereField("targetId", in: targetIds)
-            .getDocuments { snapshot, error in
-                if let error = error {
-                    completion(.failure(error))
-                    return
-                }
-                
-                guard let documents = snapshot?.documents else {
-                    completion(.success([:]))
-                    return
-                }
-                
-                // Создаём словарь targetId -> Like
-                var likesDict: [String: Like] = [:]
-                for document in documents {
-                    if let like = Like(dictionary: document.data(), id: document.documentID) {
-                        likesDict[like.targetId] = like
+
+        // Разбиваем targetIds на чанки по firestoreInLimit (лимит Firestore для `in`)
+        let chunks = stride(from: 0, to: targetIds.count, by: Self.firestoreInLimit).map {
+            Array(targetIds[$0..<min($0 + Self.firestoreInLimit, targetIds.count)])
+        }
+
+        let syncQueue = DispatchQueue(label: "com.neighbors.fetchLikes")
+        let group = DispatchGroup()
+        var allLikes: [String: Like] = [:]
+        var fetchError: Error?
+
+        for chunk in chunks {
+            group.enter()
+            db.collection(likesCollection)
+                .whereField("userId", isEqualTo: userId)
+                .whereField("targetId", in: chunk)
+                .getDocuments { snapshot, error in
+                    syncQueue.sync {
+                        if let error = error {
+                            fetchError = error
+                        } else if let documents = snapshot?.documents {
+                            for document in documents {
+                                if let like = Like(dictionary: document.data(), id: document.documentID) {
+                                    allLikes[like.targetId] = like
+                                }
+                            }
+                        }
                     }
+                    group.leave()
                 }
-                
-                completion(.success(likesDict))
+        }
+
+        group.notify(queue: .main) {
+            let result = syncQueue.sync { () -> Result<[String: Like], Error> in
+                if let error = fetchError {
+                    return .failure(error)
+                }
+                return .success(allLikes)
             }
+            completion(result)
+        }
     }
     
     /// Удалить все лайки для конкретного объекта (пост или комментарий)
