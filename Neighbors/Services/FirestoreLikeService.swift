@@ -125,22 +125,24 @@ class FirestoreLikeService {
                 }
                 
                 // Удаляем каждый лайк
+                let syncQueue = DispatchQueue(label: "com.neighbors.deleteAllLikes")
                 let group = DispatchGroup()
                 var errors: [Error] = []
-                
+
                 for document in documents {
                     group.enter()
                     self?.removeLike(likeId: document.documentID) { deleteResult in
                         if case .failure(let error) = deleteResult {
-                            errors.append(error)
+                            syncQueue.sync { errors.append(error) }
                         }
                         group.leave()
                     }
                 }
-                
+
                 group.notify(queue: .main) {
-                    if let firstError = errors.first {
-                        completion(.failure(firstError))
+                    let firstError = syncQueue.sync { errors.first }
+                    if let error = firstError {
+                        completion(.failure(error))
                     } else {
                         completion(.success(()))
                     }

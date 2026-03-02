@@ -69,28 +69,33 @@ class FirebaseStorageService {
     ///   - postId: ID поста
     ///   - completion: Callback с массивом URL или ошибкой
     func uploadPostImages(_ images: [UIImage], postId: String, completion: @escaping (Result<[String], Error>) -> Void) {
-        var uploadedURLs: [String] = []
+        let syncQueue = DispatchQueue(label: "com.neighbors.uploadPostImages")
+        var uploadedURLs: [String?] = Array(repeating: nil, count: images.count)
         let group = DispatchGroup()
         var uploadError: Error?
-        
-        for image in images {
+
+        for (index, image) in images.enumerated() {
             group.enter()
             uploadPostImage(image, postId: postId) { result in
-                switch result {
-                case .success(let url):
-                    uploadedURLs.append(url)
-                case .failure(let error):
-                    uploadError = error
+                syncQueue.sync {
+                    switch result {
+                    case .success(let url):
+                        uploadedURLs[index] = url
+                    case .failure(let error):
+                        uploadError = error
+                    }
                 }
                 group.leave()
             }
         }
-        
+
         group.notify(queue: .main) {
-            if let error = uploadError {
+            let finalError = syncQueue.sync { uploadError }
+            if let error = finalError {
                 completion(.failure(error))
             } else {
-                completion(.success(uploadedURLs))
+                let urls = syncQueue.sync { uploadedURLs.compactMap { $0 } }
+                completion(.success(urls))
             }
         }
     }
@@ -104,26 +109,28 @@ class FirebaseStorageService {
             completion(.success(()))
             return
         }
-        
+
+        let syncQueue = DispatchQueue(label: "com.neighbors.deletePostImages")
         let group = DispatchGroup()
         var deleteError: Error?
-        
+
         for urlString in imageURLs {
             group.enter()
-            
+
             // Создаём ссылку из URL
             let storageRef = storage.reference(forURL: urlString)
-            
+
             storageRef.delete { error in
                 if let error = error {
-                    deleteError = error
+                    syncQueue.sync { deleteError = error }
                 }
                 group.leave()
             }
         }
-        
+
         group.notify(queue: .main) {
-            if let error = deleteError {
+            let finalError = syncQueue.sync { deleteError }
+            if let error = finalError {
                 completion(.failure(error))
             } else {
                 completion(.success(()))

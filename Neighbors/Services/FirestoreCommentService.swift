@@ -108,22 +108,24 @@ class FirestoreCommentService {
                 }
                 
                 // Удаляем каждый комментарий
+                let syncQueue = DispatchQueue(label: "com.neighbors.deleteAllComments")
                 let group = DispatchGroup()
                 var errors: [Error] = []
-                
+
                 for comment in comments {
                     group.enter()
                     self?.deleteComment(commentId: comment.id) { deleteResult in
                         if case .failure(let error) = deleteResult {
-                            errors.append(error)
+                            syncQueue.sync { errors.append(error) }
                         }
                         group.leave()
                     }
                 }
-                
+
                 group.notify(queue: .main) {
-                    if let firstError = errors.first {
-                        completion(.failure(firstError))
+                    let firstError = syncQueue.sync { errors.first }
+                    if let error = firstError {
+                        completion(.failure(error))
                     } else {
                         completion(.success(()))
                     }
