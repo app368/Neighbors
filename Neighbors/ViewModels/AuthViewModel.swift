@@ -7,7 +7,7 @@ enum AuthState {
     case idle           // Ожидание действий пользователя
     case loading        // Процесс выполнения (регистрация/вход)
     case success        // Успешная авторизация
-    case error(String)  // Ошибка с сообщением
+    case error(AppError) // Ошибка (валидация или Firebase)
 }
 
 /// ViewModel для экрана авторизации
@@ -36,17 +36,17 @@ class AuthViewModel {
         guard !email.isEmpty else {
             return "Введите email"
         }
-        
+
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
-        
+
         guard emailPredicate.evaluate(with: email) else {
             return "Email введён некорректно"
         }
-        
+
         return nil
     }
-    
+
     /// Валидация пароля
     /// - Parameter password: Пароль для проверки
     /// - Returns: Сообщение об ошибке или nil если валиден
@@ -54,14 +54,14 @@ class AuthViewModel {
         guard !password.isEmpty else {
             return "Введите пароль"
         }
-        
+
         guard password.count >= 6 else {
             return "Пароль должен быть минимум 6 символов"
         }
-        
+
         return nil
     }
-    
+
     /// Валидация nickname
     /// - Parameter nickname: Nickname для проверки
     /// - Returns: Сообщение об ошибке или nil если валиден
@@ -69,15 +69,15 @@ class AuthViewModel {
         guard !nickname.isEmpty else {
             return "Введите nickname"
         }
-        
+
         guard nickname.count >= 2 else {
             return "Nickname должен быть минимум 2 символа"
         }
-        
+
         guard nickname.count <= 20 else {
             return "Nickname не должен превышать 20 символов"
         }
-        
+
         return nil
     }
     
@@ -91,22 +91,22 @@ class AuthViewModel {
     func register(email: String, password: String, nickname: String) {
         // Валидация всех полей
         if let emailError = validateEmail(email) {
-            state = .error(emailError)
+            state = .error(.validation(emailError))
             return
         }
-        
+
         if let passwordError = validatePassword(password) {
-            state = .error(passwordError)
+            state = .error(.validation(passwordError))
             return
         }
-        
+
         if let nicknameError = validateNickname(nickname) {
-            state = .error(nicknameError)
+            state = .error(.validation(nicknameError))
             return
         }
-        
+
         state = .loading
-        
+
         // A1.5: Создание аккаунта в Firebase Authentication
         authService.register(email: email, password: password) { [weak self] result in
             switch result {
@@ -114,9 +114,9 @@ class AuthViewModel {
                 // A1.6: Сохранение данных пользователя в Firestore
                 let user = User(uid: uid, email: email, nickname: nickname)
                 self?.createUserInFirestore(user)
-                
+
             case .failure(let error):
-                self?.state = .error(self?.handleFirebaseError(error) ?? "Ошибка регистрации")
+                self?.state = .error(AppError.from(error))
             }
         }
     }
@@ -128,26 +128,26 @@ class AuthViewModel {
     func signIn(email: String, password: String) {
         // Валидация полей
         if let emailError = validateEmail(email) {
-            state = .error(emailError)
+            state = .error(.validation(emailError))
             return
         }
-        
+
         if let passwordError = validatePassword(password) {
-            state = .error(passwordError)
+            state = .error(.validation(passwordError))
             return
         }
-        
+
         state = .loading
-        
+
         // A2.4: Вход через Firebase Authentication
         authService.signIn(email: email, password: password) { [weak self] result in
             switch result {
             case .success(let uid):
                 // A2.5: Загрузка данных пользователя из Firestore
                 self?.fetchUserFromFirestore(uid: uid)
-                
+
             case .failure(let error):
-                self?.state = .error(self?.handleFirebaseError(error) ?? "Ошибка входа")
+                self?.state = .error(AppError.from(error))
             }
         }
     }
@@ -161,13 +161,13 @@ class AuthViewModel {
             case .success:
                 // A1.7: Успешная регистрация
                 self?.state = .success
-                
+
             case .failure(let error):
-                self?.state = .error(AppError.from(error).userMessage)
+                self?.state = .error(AppError.from(error))
             }
         }
     }
-    
+
     /// Загрузка пользователя из Firestore
     private func fetchUserFromFirestore(uid: String) {
         userService.fetchUser(uid: uid) { [weak self] result in
@@ -175,16 +175,10 @@ class AuthViewModel {
             case .success:
                 // A2.6: Успешный вход
                 self?.state = .success
-                
+
             case .failure(let error):
-                self?.state = .error(AppError.from(error).userMessage)
+                self?.state = .error(AppError.from(error))
             }
         }
-    }
-    
-    /// Обработка ошибок Firebase для понятных сообщений пользователю
-
-    private func handleFirebaseError(_ error: Error) -> String {
-        return AppError.from(error).userMessage
     }
 }

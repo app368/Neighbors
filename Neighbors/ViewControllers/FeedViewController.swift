@@ -228,17 +228,15 @@ class FeedViewController: UIViewController {
                 tableView.isHidden = true
             }
             
-        case .error(let message):
+        case .error(let error):
             activityIndicator.stopAnimating()
             emptyStateLabel.isHidden = true
             tableView.isHidden = false
-            
-            // Показать ошибку
-            let alert = UIAlertController(title: "Error",
-                                         message: message,
-                                         preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
+
+            // Показываем ошибку через ErrorPresenter с кнопкой Retry для retryable-ошибок
+            presentRetryError(error) { [weak self] in
+                self?.viewModel.loadPosts()
+            }
         }
     }
 }

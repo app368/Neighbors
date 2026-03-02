@@ -8,7 +8,7 @@ enum PostDetailState {
     case idle
     case loadingComments
     case commentsLoaded
-    case error(String)
+    case error(AppError)
 }
 
 /// ViewModel для экрана детального поста
@@ -117,7 +117,7 @@ class PostDetailViewModel {
                 self?.onCommentsUpdated?(fetchedComments)
                 
             case .failure(let error):
-                self?.state = .error("Failed to load comments: \(error.localizedDescription)")
+                self?.state = .error(AppError.from(error))
             }
         }
     }

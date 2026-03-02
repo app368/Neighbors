@@ -7,7 +7,7 @@ enum FeedState {
     case idle           // Начальное состояние
     case loading        // Загрузка постов
     case loaded         // Посты загружены
-    case error(String)  // Ошибка загрузки
+    case error(AppError) // Ошибка загрузки
     case empty          // Нет постов
 }
 
@@ -50,41 +50,41 @@ class FeedViewModel {
     /// Загрузка постов из Firestore
     func loadPosts() {
         state = .loading
-        
+
         postService.fetchPosts { [weak self] result in
             switch result {
             case .success(let fetchedPosts):
                 self?.posts = fetchedPosts
-                
+
                 if fetchedPosts.isEmpty {
                     self?.state = .empty
                 } else {
                     self?.state = .loaded
                 }
-                
+
             case .failure(let error):
-                self?.state = .error(error.localizedDescription)
+                self?.state = .error(AppError.from(error))
             }
         }
     }
-    
+
     /// Обновление ленты (pull-to-refresh)
     func refreshPosts(completion: @escaping () -> Void) {
         postService.fetchPosts { [weak self] result in
             switch result {
             case .success(let fetchedPosts):
                 self?.posts = fetchedPosts
-                
+
                 if fetchedPosts.isEmpty {
                     self?.state = .empty
                 } else {
                     self?.state = .loaded
                 }
-                
+
             case .failure(let error):
-                self?.state = .error(error.localizedDescription)
+                self?.state = .error(AppError.from(error))
             }
-            
+
             completion()
         }
     }
@@ -133,11 +133,11 @@ class FeedViewModel {
                 self?.posts.append(contentsOf: newPosts)
                 
             case .failure(let error):
-                self?.state = .error(error.localizedDescription)
+                self?.state = .error(AppError.from(error))
             }
         }
     }
-    
+
     /// Есть ли ещё посты для подгрузки
     var hasMorePosts: Bool {
         return postService.hasMorePosts

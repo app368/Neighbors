@@ -284,29 +284,33 @@ class AuthViewController: UIViewController {
             // Переход в основное приложение
             navigateToMainApp()
             
-        case .error(let message):
+        case .error(let error):
             actionButton.isEnabled = true
             activityIndicator.stopAnimating()
-            showError(message)
+            showError(error)
         }
     }
-    
-    private func showError(_ message: String) {
-        // Проверяем, относится ли ошибка к конкретному полю
-        if message.contains("email") || message.contains("Email") {
-            emailErrorLabel.text = message
-            emailErrorLabel.isHidden = false
-        } else if message.contains("пароль") || message.contains("Пароль") {
-            passwordErrorLabel.text = message
-            passwordErrorLabel.isHidden = false
-        } else if message.contains("nickname") || message.contains("Nickname") {
-            nicknameErrorLabel.text = message
-            nicknameErrorLabel.isHidden = false
+
+    /// Показывает ошибку: валидационные — в метки полей, остальные — через ErrorPresenter
+    private func showError(_ error: AppError) {
+        if case .validation(let message) = error {
+            // Маршрутизируем валидационную ошибку к соответствующей метке поля
+            let lower = message.lowercased()
+            if lower.contains("email") {
+                emailErrorLabel.text = message
+                emailErrorLabel.isHidden = false
+            } else if lower.contains("password") || lower.contains("пароль") {
+                passwordErrorLabel.text = message
+                passwordErrorLabel.isHidden = false
+            } else if lower.contains("nickname") {
+                nicknameErrorLabel.text = message
+                nicknameErrorLabel.isHidden = false
+            } else {
+                presentError(error)
+            }
         } else {
-            // Показываем общую ошибку через UIAlertController
-            let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
+            // Firebase / сетевые ошибки — через единый ErrorPresenter
+            presentError(error)
         }
     }
     

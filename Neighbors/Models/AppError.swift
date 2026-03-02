@@ -31,6 +31,9 @@ enum AppError {
     case quotaExceeded
     case fileTooLarge
     
+    /// Ошибки валидации полей формы (email, пароль, nickname)
+    case validation(String)
+
     /// Неизвестная ошибка
     case unknown(String)
     
@@ -77,6 +80,10 @@ enum AppError {
         case .fileTooLarge:
             return "File is too large to upload."
             
+        // Валидация формы — сообщение передаётся как есть
+        case .validation(let message):
+            return message
+
         // Неизвестная
         case .unknown(let message):
             return "Something went wrong: \(message)"

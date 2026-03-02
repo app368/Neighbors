@@ -677,18 +677,12 @@ class PostDetailViewController: UIViewController {
                     self?.navigationController?.popViewController(animated: true)
                     
                 case .failure(let error):
-                    let alert = UIAlertController(
-                        title: "Error",
-                        message: "Failed to delete post: \(error.localizedDescription)",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+                    self?.presentError(error)
                 }
             }
         }
     }
-    
+
     private func createComment(_ text: String) {
         viewModel.createComment(content: text) { [weak self] result in
             DispatchQueue.main.async {
@@ -698,18 +692,12 @@ class PostDetailViewController: UIViewController {
                     self?.dismissKeyboard()
                     
                 case .failure(let error):
-                    let alert = UIAlertController(
-                        title: "Error",
-                        message: "Failed to post comment: \(error.localizedDescription)",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+                    self?.presentError(error)
                 }
             }
         }
     }
-    
+
     @objc private func authorTapped() {
         let post = viewModel.post
         let isOwn = post.authorId == FirebaseAuthService.shared.currentUser?.uid
@@ -765,11 +753,9 @@ class PostDetailViewController: UIViewController {
         case .commentsLoaded:
             activityIndicator.stopAnimating()
             
-        case .error(let message):
+        case .error(let error):
             activityIndicator.stopAnimating()
-            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
+            presentError(error)
         }
     }
 }
@@ -858,13 +844,7 @@ extension PostDetailViewController: UITableViewDelegate {
             self?.viewModel.editComment(comment, newContent: newContent) { result in
                 DispatchQueue.main.async {
                     if case .failure(let error) = result {
-                        let errorAlert = UIAlertController(
-                            title: "Error",
-                            message: "Failed to edit comment: \(error.localizedDescription)",
-                            preferredStyle: .alert
-                        )
-                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self?.present(errorAlert, animated: true)
+                        self?.presentError(error)
                     }
                 }
             }
@@ -877,13 +857,7 @@ extension PostDetailViewController: UITableViewDelegate {
         viewModel.deleteComment(comment) { [weak self] result in
             DispatchQueue.main.async {
                 if case .failure(let error) = result {
-                    let alert = UIAlertController(
-                        title: "Error",
-                        message: "Failed to delete comment: \(error.localizedDescription)",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+                    self?.presentError(error)
                 }
             }
         }

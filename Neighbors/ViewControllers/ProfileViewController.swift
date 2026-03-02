@@ -281,7 +281,7 @@ class ProfileViewController: UIViewController {
                     
                 case .failure(let error):
                     self?.activityIndicator.stopAnimating()
-                    self?.showError("Failed to load profile: \(error.localizedDescription)")
+                    self?.presentError(error)
                 }
             }
         }
@@ -327,7 +327,7 @@ class ProfileViewController: UIViewController {
                     self.likesStatView.setValue(totalLikes)
 
                 case .failure(let error):
-                    self.showError("Failed to load posts: \(error.localizedDescription)")
+                    self.presentError(error)
                 }
             }
         }
@@ -444,7 +444,7 @@ class ProfileViewController: UIViewController {
                 case .success:
                     onSuccess()
                 case .failure(let error):
-                    self?.showError("Failed to update: \(error.localizedDescription)")
+                    self?.presentError(error)
                 }
             }
         }
@@ -457,15 +457,10 @@ class ProfileViewController: UIViewController {
                 window.rootViewController = AuthViewController()
             }
         } catch {
-            showError("Failed to logout: \(error.localizedDescription)")
+            presentError(error)
         }
     }
     
-    private func showError(_ message: String) {
-        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
-    }
 }
 
 // MARK: - UITableViewDataSource
