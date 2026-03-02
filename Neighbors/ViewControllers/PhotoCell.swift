@@ -14,6 +14,7 @@ class PhotoCell: UICollectionViewCell {
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 8
+        imageView.backgroundColor = .systemGray5
         imageView.translatesAutoresizingMaskIntoConstraints = false
         return imageView
     }()
@@ -66,7 +67,8 @@ class PhotoCell: UICollectionViewCell {
     
     // MARK: - Configuration
     
-    func configure(with image: UIImage) {
+    /// Принимает опциональный UIImage: nil показывает серый placeholder (загрузка)
+    func configure(with image: UIImage?) {
         imageView.image = image
     }
     
