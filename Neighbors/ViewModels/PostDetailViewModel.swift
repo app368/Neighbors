@@ -179,18 +179,30 @@ class PostDetailViewModel {
     ///   - comment: Комментарий для удаления
     ///   - completion: Callback с результатом
     func deleteComment(_ comment: Comment, completion: @escaping (Result<Void, Error>) -> Void) {
-        // Удалить все лайки комментария
-        likeService.deleteAllLikes(forTargetId: comment.id) { [weak self] _ in
+        let commentId = comment.id
+
+        // Удалить все лайки комментария (best effort — продолжаем даже при ошибке)
+        likeService.deleteAllLikes(forTargetId: commentId) { [weak self] _ in
+            guard let self else {
+                completion(.failure(NSError(domain: "PostDetail", code: -1,
+                                            userInfo: [NSLocalizedDescriptionKey: "Operation cancelled"])))
+                return
+            }
+
             // Удалить сам комментарий
-            self?.commentService.deleteComment(commentId: comment.id) { result in
+            self.commentService.deleteComment(commentId: commentId) { [weak self] result in
                 switch result {
                 case .success:
+                    guard let self else {
+                        completion(.success(()))
+                        return
+                    }
                     // Уменьшить счётчик комментариев в посте
-                    self?.decrementPostCommentsCount {
-                        self?.loadComments()
+                    self.decrementPostCommentsCount {
+                        self.loadComments()
                         completion(.success(()))
                     }
-                    
+
                 case .failure(let error):
                     completion(.failure(error))
                 }
@@ -203,14 +215,26 @@ class PostDetailViewModel {
     /// Удаление поста (вместе со всеми комментариями и лайками)
     /// - Parameter completion: Callback с результатом
     func deletePost(completion: @escaping (Result<Void, Error>) -> Void) {
-        // Удалить все комментарии поста
-        commentService.deleteAllComments(forPostId: post.id) { [weak self] _ in
-            guard let self = self else { return }
-            
-            // Удалить все лайки поста
-            self.likeService.deleteAllLikes(forTargetId: self.post.id) { _ in
+        let postId = post.id
+
+        // Удалить все комментарии поста (best effort — продолжаем даже при ошибке)
+        commentService.deleteAllComments(forPostId: postId) { [weak self] _ in
+            guard let self else {
+                completion(.failure(NSError(domain: "PostDetail", code: -1,
+                                            userInfo: [NSLocalizedDescriptionKey: "Operation cancelled"])))
+                return
+            }
+
+            // Удалить все лайки поста (best effort)
+            self.likeService.deleteAllLikes(forTargetId: postId) { [weak self] _ in
+                guard let self else {
+                    completion(.failure(NSError(domain: "PostDetail", code: -1,
+                                                userInfo: [NSLocalizedDescriptionKey: "Operation cancelled"])))
+                    return
+                }
+
                 // Удалить сам пост
-                self.postService.deletePost(postId: self.post.id, completion: completion)
+                self.postService.deletePost(postId: postId, completion: completion)
             }
         }
     }
@@ -289,8 +313,9 @@ class PostDetailViewModel {
     private func incrementLikesCount(targetId: String, targetType: Like.LikeTargetType) {
         if targetType == .post && targetId == post.id {
             postService.incrementLikesCount(postId: targetId) { [weak self] _ in
-                self?.post.likesCount += 1
-                self?.onPostUpdated?(self!.post)
+                guard let self else { return }
+                self.post.likesCount += 1
+                self.onPostUpdated?(self.post)
             }
         } else if targetType == .comment {
             if let index = comments.firstIndex(where: { $0.id == targetId }) {
@@ -304,8 +329,9 @@ class PostDetailViewModel {
     private func decrementLikesCount(targetId: String, targetType: Like.LikeTargetType) {
         if targetType == .post && targetId == post.id {
             postService.decrementLikesCount(postId: targetId) { [weak self] _ in
-                self?.post.likesCount -= 1
-                self?.onPostUpdated?(self!.post)
+                guard let self else { return }
+                self.post.likesCount -= 1
+                self.onPostUpdated?(self.post)
             }
         } else if targetType == .comment {
             if let index = comments.firstIndex(where: { $0.id == targetId }) {
@@ -318,8 +344,9 @@ class PostDetailViewModel {
     /// Увеличить счётчик комментариев поста
     private func incrementPostCommentsCount(completion: @escaping () -> Void) {
         postService.incrementCommentsCount(postId: post.id) { [weak self] _ in
-            self?.post.commentsCount += 1
-            self?.onPostUpdated?(self!.post)
+            guard let self else { return }
+            self.post.commentsCount += 1
+            self.onPostUpdated?(self.post)
             completion()
         }
     }
@@ -327,8 +354,9 @@ class PostDetailViewModel {
     /// Уменьшить счётчик комментариев поста
     private func decrementPostCommentsCount(completion: @escaping () -> Void) {
         postService.decrementCommentsCount(postId: post.id) { [weak self] _ in
-            self?.post.commentsCount -= 1
-            self?.onPostUpdated?(self!.post)
+            guard let self else { return }
+            self.post.commentsCount -= 1
+            self.onPostUpdated?(self.post)
             completion()
         }
     }
