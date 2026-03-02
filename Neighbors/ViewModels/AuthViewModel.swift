@@ -34,14 +34,14 @@ class AuthViewModel {
     /// - Returns: Сообщение об ошибке или nil если валиден
     func validateEmail(_ email: String) -> String? {
         guard !email.isEmpty else {
-            return "Введите email"
+            return "Please enter your email"
         }
 
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
 
         guard emailPredicate.evaluate(with: email) else {
-            return "Email введён некорректно"
+            return "Please enter a valid email"
         }
 
         return nil
@@ -52,11 +52,11 @@ class AuthViewModel {
     /// - Returns: Сообщение об ошибке или nil если валиден
     func validatePassword(_ password: String) -> String? {
         guard !password.isEmpty else {
-            return "Введите пароль"
+            return "Please enter your password"
         }
 
         guard password.count >= 6 else {
-            return "Пароль должен быть минимум 6 символов"
+            return "Password must be at least 6 characters"
         }
 
         return nil
@@ -67,15 +67,15 @@ class AuthViewModel {
     /// - Returns: Сообщение об ошибке или nil если валиден
     func validateNickname(_ nickname: String) -> String? {
         guard !nickname.isEmpty else {
-            return "Введите nickname"
+            return "Please enter a nickname"
         }
 
         guard nickname.count >= 2 else {
-            return "Nickname должен быть минимум 2 символа"
+            return "Nickname must be at least 2 characters"
         }
 
         guard nickname.count <= 20 else {
-            return "Nickname не должен превышать 20 символов"
+            return "Nickname cannot exceed 20 characters"
         }
 
         return nil
