@@ -105,12 +105,11 @@ class FeedViewModel {
         return isSearching ? filteredPosts.count : posts.count
     }
     
-    /// Обновить пост в списке
+    /// Обновить пост в списке (didSet у posts → onPostsUpdated вызывается автоматически)
         /// - Parameter updatedPost: Обновлённый пост
         func updatePost(_ updatedPost: Post) {
             if let index = posts.firstIndex(where: { $0.id == updatedPost.id }) {
                 posts[index] = updatedPost
-                onPostsUpdated?(posts)
             }
         }
     

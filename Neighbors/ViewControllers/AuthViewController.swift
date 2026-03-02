@@ -339,19 +339,4 @@ class AuthViewController: UIViewController {
     }
     
 }
-    
-    
-    
-    
-    
- // MARK: - Old
-//    private func navigateToMainApp() {
-//        // TODO: Позже заменим на переход к ленте постов
-//        // Пока просто показываем заглушку
-//        let alert = UIAlertController(title: "Успешно!",
-//                                     message: "Вы успешно вошли в систему",
-//                                     preferredStyle: .alert)
-//        alert.addAction(UIAlertAction(title: "OK", style: .default))
-//        present(alert, animated: true)
-//    }
 

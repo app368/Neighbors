@@ -27,25 +27,31 @@ Neighbors/
 │   ├── Post.swift
 │   ├── Comment.swift
 │   ├── Like.swift
-│   └── AppError.swift
+│   ├── AppError.swift
+│   ├── DateFormatter+Extensions.swift   ← extension Date: relativeTimeString()
+│   └── UIButton+Animation.swift         ← extension UIButton: animateLike/Unlike()
 ├── Services/
 │   ├── FirebaseAuthService.swift
 │   ├── FirestorePostService.swift
 │   ├── FirestoreCommentService.swift
 │   ├── FirestoreLikeService.swift
+│   ├── FirestoreUserService.swift
 │   ├── FirebaseStorageService.swift
 │   ├── ImageCacheService.swift
-│   └── ErrorPresenter.swift
+│   ├── VideoLinkService.swift
+│   └── ErrorPresenter.swift             ← extension UIViewController: presentError / presentRetryError
 ├── ViewModels/
 │   ├── AuthViewModel.swift
 │   ├── FeedViewModel.swift
-│   └── PostDetailViewModel.swift
+│   ├── PostDetailViewModel.swift
+│   └── CreatePostViewModel.swift
 ├── ViewControllers/
 │   ├── AuthViewController.swift
 │   ├── FeedViewController.swift
-│   ├── CreatePostViewController.swift
+│   ├── CreatePostViewController.swift   ← также содержит enum ImageItem
 │   ├── PostDetailViewController.swift
 │   ├── ProfileViewController.swift
+│   ├── ProfileStatView.swift
 │   ├── CommentInputView.swift
 │   ├── CommentTableViewCell.swift
 │   ├── PostTableViewCell.swift
@@ -93,7 +99,9 @@ Neighbors/
 3. **Видео-ссылки** — не встроенный плеер, а открытие YouTube/Vimeo в Safari
 4. **Локальный поиск** — фильтрация загруженных постов на клиенте (Firestore не поддерживает full-text search)
 5. **Firestore persistence** — включён по умолчанию, обеспечивает базовый офлайн-режим без дополнительной реализации
-6. **Единая обработка ошибок** — AppError + ErrorPresenter вместо разрозненных alert'ов
+6. **Единая обработка ошибок** — `AppError` + `ErrorPresenter` вместо разрозненных alert'ов; `case validation(String)` — отдельный кейс для field-level ошибок форм
+7. **ImageItem enum** — модель медиа: `.existing(url:image?)` и `.new(image:)`, позволяет единообразно работать с фото при создании и редактировании поста
+8. **DateFormatter кэширование** — `static let` в `DateFormatter+Extensions` и `User`, чтобы избежать дорогостоящего создания при каждом вызове
 
 ---
 
@@ -101,7 +109,7 @@ Neighbors/
 
 - **Актуальная ветка:** `develop`
 - Все реализованные задачи смержены в develop
-- Стиль коммитов: conventional commits (`feat:`, `fix:`)
+- Стиль коммитов: conventional commits (`feat:`, `fix:`, `refactor:`, `chore:`)
 - Feature-ветки создаются для каждой задачи и мержатся после тестирования
 
 ---
@@ -123,3 +131,6 @@ Neighbors/
 | **Neighbors2 — Continue** | Доработка изображений (E), видео-ссылки (F), профиль пользователя (G), исправление распределения цветов аватаров |
 | **Neighbors3 — Search&Optimization** | Поиск в ленте постов (H) — UISearchController, локальная фильтрация по заголовку + тексту + автору. Пагинация и prefetching (I) — загрузка по 20 постов, footer spinner. Обработка ошибок (J) — AppError enum, ErrorPresenter, Retry в ленте. Обсуждение локализации (решено не делать — только один язык), обсуждение push-уведомлений. Решено не делать, нет необходимости |
 | **Neighbors3+ — Polishing** | Глубокий рефакторинг обработки ошибок — интеграция AppError/ErrorPresenter во все контроллеры (State enums переведены с `error(String)` на `error(AppError)`), удаление дублирующего маппинга из AuthViewModel. Мониторинг сети — NWPathMonitor для мгновенной обратной связи при офлайне, timeout-механизмы для Firebase-операций при нестабильном соединении. UI polish: динамические иконки лайков и комментариев (filled при count > 0, outlined при 0), исправление клавиатуры в PostDetail (CommentInputView перекрывался клавиатурой), унификация поведения после создания поста (всегда показывать PostDetail, независимо от наличия медиа). Админ-бейджи — эмодзи 🛡 рядом с никнеймом для admin-роли, добавление поля `authorIsAdmin` в модели Post и Comment, обновление PostTableViewCell, CommentTableViewCell и PostDetailViewController |
+| **Neighbors6 — Refactoring 1-4** | Рефакторинг по REFACTORING_PLAN.md (P0+P1 bugfix-ы): задачи 1-4 — исправление критических и важных багов |
+| **Neighbors7 — Refactoring 5-6** | Рефакторинг: задача 5 — разделение логики пагинации (`fetchMorePosts` вынесен в `FirestorePostService`), задача 6 — модель медиа `ImageItem` enum (`.existing` / `.new`) для единообразной работы с фото при создании и редактировании поста |
+| **Neighbors8 — Refactoring 7-10** | Рефакторинг: задача 7 — унификация ошибок (`AppError.validation(String)`, все State enums `error(AppError)`, замена сырых alert'ов на `presentError` / `presentRetryError`); задача 8 — перевод всех validation-сообщений и UI-строк авторизации на английский. Задача 9 — code cleanup: удаление legacy-комментариев из AppDelegate/SceneDelegate/AuthViewController, удаление `ViewController.swift`, удаление неиспользуемого `onPostCreatedWithPost`, `deinit` с `removeObserver` в PostDetailViewController, кэширование `DateFormatter` в `static let`. Задача 10 — обновление CLAUDE.md (актуальная структура файлов, история чатов) |

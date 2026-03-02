@@ -211,28 +211,33 @@ class PostDetailViewController: UIViewController {
     }
     
     // MARK: - Lifecycle
-    
+
     override func viewDidLoad() {
-            super.viewDidLoad()
-            setupUI()
-            setupTableView()
-            setupBindings()
-            configurePostHeader()
-            
-            // Загрузка текущего пользователя, затем настройка navigation bar
-            viewModel.loadCurrentUser { [weak self] in
-                DispatchQueue.main.async {
-                    self?.setupNavigationBar()
-                }
+        super.viewDidLoad()
+        setupUI()
+        setupTableView()
+        setupBindings()
+        configurePostHeader()
+
+        // Загрузка текущего пользователя, затем настройка navigation bar
+        viewModel.loadCurrentUser { [weak self] in
+            DispatchQueue.main.async {
+                self?.setupNavigationBar()
             }
-            
-            // Загрузка комментариев
-            viewModel.loadComments()
-        
+        }
+
+        // Загрузка комментариев
+        viewModel.loadComments()
+
         // Подписка на появление/скрытие клавиатуры
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
-        }
+    }
+
+    deinit {
+        // Снятие подписок на уведомления клавиатуры
+        NotificationCenter.default.removeObserver(self)
+    }
     
     // MARK: - Setup
     

@@ -166,9 +166,7 @@ class CreatePostViewController: UIViewController {
     
     /// Callback для обновления ленты после создания поста
     var onPostCreated: (() -> Void)?
-    /// Callback с созданным постом (для перехода в карточку)
-    var onPostCreatedWithPost: ((Post) -> Void)?
-    
+
     /// Пост для редактирования (если nil - режим создания)
     private var postToEdit: Post?
     

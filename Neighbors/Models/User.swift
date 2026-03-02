@@ -50,11 +50,16 @@ struct User {
         ]
     }
     
-    /// Форматированная дата регистрации
-    func formattedRegistrationDate() -> String {
+    /// Кэшированный форматтер для даты регистрации
+    private static let registrationDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
-        return formatter.string(from: createdAt)
+        return formatter
+    }()
+
+    /// Форматированная дата регистрации
+    func formattedRegistrationDate() -> String {
+        return User.registrationDateFormatter.string(from: createdAt)
     }
 }
