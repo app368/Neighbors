@@ -111,6 +111,34 @@ class FirestorePostService {
             }
     }
     
+    /// Загрузка всех постов конкретного пользователя (для профиля, без пагинации)
+    /// - Parameters:
+    ///   - authorId: UID автора
+    ///   - completion: Callback с результатом (массив постов или ошибка)
+    func fetchUserPosts(authorId: String, completion: @escaping (Result<[Post], Error>) -> Void) {
+        // Фильтрация по автору на стороне Firestore — не требует составного индекса
+        // Сортировка по дате выполняется на клиенте (для совместимости с текущей схемой индексов)
+        db.collection(postsCollection)
+            .whereField("authorId", isEqualTo: authorId)
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+
+                guard let documents = snapshot?.documents else {
+                    completion(.success([]))
+                    return
+                }
+
+                let posts = documents
+                    .compactMap { Post(dictionary: $0.data(), id: $0.documentID) }
+                    .sorted { $0.createdAt > $1.createdAt }
+
+                completion(.success(posts))
+            }
+    }
+
     /// Загрузка поста по ID
     /// - Parameters:
     ///   - postId: ID поста

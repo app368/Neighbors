@@ -3,6 +3,22 @@
 import UIKit
 import FirebaseAuth
 
+// MARK: - ImageItem
+
+/// Модель медиа-элемента поста: существующее фото (с URL из Firebase) или новое (только UIImage)
+enum ImageItem {
+    case existing(url: String, image: UIImage?)
+    case new(image: UIImage)
+
+    /// Изображение для отображения (nil пока идёт загрузка existing)
+    var image: UIImage? {
+        switch self {
+        case .existing(_, let image): return image
+        case .new(let image): return image
+        }
+    }
+}
+
 /// Экран создания нового поста
 class CreatePostViewController: UIViewController {
     
@@ -159,20 +175,17 @@ class CreatePostViewController: UIViewController {
     /// Callback для обновления поста после редактирования
     var onPostUpdated: ((Post) -> Void)?
     
-    /// URL изображений, которые уже есть в Firebase (для режима редактирования)
-    private var existingImageURLs: [String] = []
-    
-    /// Общее количество изображений (существующие + новые)
-    private var totalImagesCount: Int {
-        return existingImageURLs.count + selectedImages.count
-    }
-    
-    /// Выбранные изображения (существующие загруженные + новые из галереи)
-    private var selectedImages: [UIImage] = [] {
+    /// Медиа-элементы: существующие (URL + загруженный UIImage) и новые (только UIImage)
+    private var imageItems: [ImageItem] = [] {
         didSet {
             updatePhotosButton()
             photosCollectionView.reloadData()
         }
+    }
+
+    /// Общее количество изображений
+    private var totalImagesCount: Int {
+        return imageItems.count
     }
     
     private let maxImages = 3
@@ -206,7 +219,6 @@ class CreatePostViewController: UIViewController {
             textViewDidChange(contentTextView)
             
             // Загружаем существующие изображения поста
-            existingImageURLs = post.images
             loadExistingImages()
             
             // Загружаем существующее видео
@@ -410,15 +422,19 @@ class CreatePostViewController: UIViewController {
             // Режим редактирования
             updatePost(post, title: title, content: content)
         } else {
-            // Режим создания
+            // Режим создания — все items будут .new(image:)
             let videoLinks = videoInfo != nil ? [videoInfo!.originalURL] : []
-            
-            if selectedImages.isEmpty && videoLinks.isEmpty {
+            let newImages = imageItems.compactMap { item -> UIImage? in
+                guard case .new(let image) = item else { return nil }
+                return image
+            }
+
+            if newImages.isEmpty && videoLinks.isEmpty {
                 // Без медиа — создаём как раньше
                 viewModel.createPost(title: title, content: content)
             } else {
                 // С медиа — метод с загрузкой
-                createPostWithMedia(title: title, content: content, images: selectedImages, videoLinks: videoLinks)
+                createPostWithMedia(title: title, content: content, images: newImages, videoLinks: videoLinks)
             }
         }
     }
@@ -447,36 +463,41 @@ class CreatePostViewController: UIViewController {
         navigationItem.rightBarButtonItem?.isEnabled = false
         activityIndicator.startAnimating()
         dismissKeyboard()
-        
-        // Определяем новые изображения (те, что добавлены после существующих)
-        let existingCount = existingImageURLs.count
-        let newImages = Array(selectedImages.dropFirst(existingCount))
-        
+
+        // Извлекаем существующие URL и новые изображения из imageItems (порядок гарантирован)
+        let existingURLs = imageItems.compactMap { item -> String? in
+            guard case .existing(let url, _) = item else { return nil }
+            return url
+        }
+        let newImages = imageItems.compactMap { item -> UIImage? in
+            guard case .new(let image) = item else { return nil }
+            return image
+        }
+
         if newImages.isEmpty {
             // Нет новых фото — обновляем только текст и текущие URL
             let fields: [String: Any] = [
                 "title": title,
                 "content": content,
-                "images": existingImageURLs,
+                "images": existingURLs,
                 "videoLinks": videoInfo != nil ? [videoInfo!.originalURL] : []
             ]
-            
+
             FirestorePostService.shared.updatePost(postId: post.id, fields: fields) { [weak self] result in
                 DispatchQueue.main.async {
                     self?.navigationItem.rightBarButtonItem?.isEnabled = true
                     self?.activityIndicator.stopAnimating()
-                    
+
                     switch result {
                     case .success:
                         var updatedPost = post
                         updatedPost.title = title
                         updatedPost.content = content
-                        updatedPost.images = self?.existingImageURLs ?? post.images
-
+                        updatedPost.images = existingURLs
                         updatedPost.updatedAt = Date()
                         self?.onPostUpdated?(updatedPost)
                         self?.dismiss(animated: true)
-                        
+
                     case .failure(let error):
                         self?.presentError(error)
                     }
@@ -486,25 +507,25 @@ class CreatePostViewController: UIViewController {
             // Есть новые фото — загружаем в Storage, потом обновляем пост
             FirebaseStorageService.shared.uploadPostImages(newImages, postId: post.id) { [weak self] uploadResult in
                 guard let self = self else { return }
-                
+
                 DispatchQueue.main.async {
                     switch uploadResult {
                     case .success(let newURLs):
-                        // Объединяем существующие URL с новыми
-                        let allImageURLs = self.existingImageURLs + newURLs
-                        
+                        // Объединяем существующие URL с новыми (существующие сохраняют порядок из imageItems)
+                        let allImageURLs = existingURLs + newURLs
+
                         let fields: [String: Any] = [
                             "title": title,
                             "content": content,
                             "images": allImageURLs,
                             "videoLinks": self.videoInfo != nil ? [self.videoInfo!.originalURL] : []
                         ]
-                        
+
                         FirestorePostService.shared.updatePost(postId: post.id, fields: fields) { result in
                             DispatchQueue.main.async {
                                 self.navigationItem.rightBarButtonItem?.isEnabled = true
                                 self.activityIndicator.stopAnimating()
-                                
+
                                 switch result {
                                 case .success:
                                     var updatedPost = post
@@ -514,13 +535,13 @@ class CreatePostViewController: UIViewController {
                                     updatedPost.updatedAt = Date()
                                     self.onPostUpdated?(updatedPost)
                                     self.dismiss(animated: true)
-                                    
+
                                 case .failure(let error):
                                     self.presentError(error)
                                 }
                             }
                         }
-                        
+
                     case .failure(let error):
                         self.navigationItem.rightBarButtonItem?.isEnabled = true
                         self.activityIndicator.stopAnimating()
@@ -751,18 +772,23 @@ class CreatePostViewController: UIViewController {
     
     
     // MARK: - Загрузка существующих изображений
-    
-    /// Загружает изображения по URL и добавляет их в selectedImages
+
+    /// Инициализирует imageItems из URL существующих фото, затем асинхронно подгружает изображения по индексу
     private func loadExistingImages() {
-        guard !existingImageURLs.isEmpty else { return }
-        
-        updatePhotosButton()
+        guard let post = postToEdit, !post.images.isEmpty else { return }
+
+        // Предзаполняем items с nil image — порядок гарантирован сразу
+        imageItems = post.images.map { .existing(url: $0, image: nil) }
         photosCollectionView.isHidden = false
-        
-        for urlString in existingImageURLs {
+
+        // Асинхронно загружаем каждое изображение, обновляем конкретный item по индексу
+        for (index, urlString) in post.images.enumerated() {
             ImageCacheService.shared.loadImage(from: urlString) { [weak self] image in
                 guard let self = self, let image = image else { return }
-                self.selectedImages.append(image)
+                guard index < self.imageItems.count else { return }
+                if case .existing(let url, _) = self.imageItems[index] {
+                    self.imageItems[index] = .existing(url: url, image: image)
+                }
             }
         }
     }
@@ -846,10 +872,10 @@ extension CreatePostViewController: UIImagePickerControllerDelegate, UINavigatio
         picker.dismiss(animated: true)
         
         guard let image = info[.originalImage] as? UIImage else { return }
-        
-        // Добавляем фото если не превышен лимит
-        if selectedImages.count < maxImages {
-            selectedImages.append(image)
+
+        // Добавляем новое фото если не превышен лимит
+        if imageItems.count < maxImages {
+            imageItems.append(.new(image: image))
         }
     }
     
@@ -863,29 +889,23 @@ extension CreatePostViewController: UIImagePickerControllerDelegate, UINavigatio
 extension CreatePostViewController: UICollectionViewDataSource {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return selectedImages.count
+        return imageItems.count
     }
-    
+
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: PhotoCell.identifier, for: indexPath) as? PhotoCell else {
             return UICollectionViewCell()
         }
-        
-        let image = selectedImages[indexPath.item]
-        cell.configure(with: image)
-        
+
+        // Передаём изображение из item (nil — пока загружается existing)
+        cell.configure(with: imageItems[indexPath.item].image)
+
         cell.onDeleteTapped = { [weak self] in
             guard let self = self else { return }
-            let index = indexPath.item
-            
-            // Если удаляем существующее фото — убираем его URL
-            if index < self.existingImageURLs.count {
-                self.existingImageURLs.remove(at: index)
-            }
-            
-            self.selectedImages.remove(at: index)
+            // Удаление по актуальному индексу — enum несёт всю информацию об item
+            self.imageItems.remove(at: indexPath.item)
         }
-        
+
         return cell
     }
 }

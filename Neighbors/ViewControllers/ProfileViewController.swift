@@ -307,45 +307,35 @@ class ProfileViewController: UIViewController {
         }
     }
     
-    /// Загружаем посты пользователя
+    /// Загружаем посты пользователя и обновляем статистику постов/лайков
     private func loadUserPosts() {
-        FirestorePostService.shared.fetchPosts { [weak self] result in
+        // Используем fetchUserPosts — не затрагивает курсор пагинации ленты
+        FirestorePostService.shared.fetchUserPosts(authorId: userId) { [weak self] result in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                self?.activityIndicator.stopAnimating()
-                
+                self.activityIndicator.stopAnimating()
+
                 switch result {
                 case .success(let posts):
-                    // Фильтруем посты текущего пользователя
-                    self?.userPosts = posts.filter { $0.authorId == self?.userId }
-                    self?.postsTableView.reloadData()
-                    self?.updatePostsTableViewHeight()
-                    
+                    self.userPosts = posts
+                    self.postsTableView.reloadData()
+                    self.updatePostsTableViewHeight()
+
+                    // Статистика постов и лайков — из уже загруженных данных (без второго запроса)
+                    let totalLikes = posts.reduce(0) { $0 + $1.likesCount }
+                    self.postsStatView.setValue(posts.count)
+                    self.likesStatView.setValue(totalLikes)
+
                 case .failure(let error):
-                    self?.showError("Failed to load posts: \(error.localizedDescription)")
+                    self.showError("Failed to load posts: \(error.localizedDescription)")
                 }
             }
         }
     }
-    
-    /// Загружаем статистику
+
+    /// Загружаем статистику комментариев
     private func loadStats() {
-        // Количество постов обновится после загрузки постов
-        // Лайки и комментарии считаем отдельно
-        
-        FirestorePostService.shared.fetchPosts { [weak self] result in
-            guard let self = self else { return }
-            
-            DispatchQueue.main.async {
-                if case .success(let allPosts) = result {
-                    let myPosts = allPosts.filter { $0.authorId == self.userId }
-                    let totalLikes = myPosts.reduce(0) { $0 + $1.likesCount }
-                    
-                    self.postsStatView.setValue(myPosts.count)
-                    self.likesStatView.setValue(totalLikes)
-                }
-            }
-        }
-        
+        // Посты и лайки обновляются в loadUserPosts()
         // Количество комментариев — через отдельный запрос
         FirestoreCommentService.shared.fetchCommentsCount(forAuthorId: userId) { [weak self] count in
             DispatchQueue.main.async {
